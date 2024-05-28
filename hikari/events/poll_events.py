@@ -23,12 +23,13 @@
 
 from __future__ import annotations
 
-__all__: typing.Sequence[str] = ("PollVoteAdd", "PollVoteRemove")
+__all__: typing.Sequence[str] = ("PollVoteCreate", "PollVoteDelete")
 
 import typing
 
 import attrs
 
+from hikari import undefined
 from hikari.events import shard_events
 from hikari.internal import attrs_extensions
 
@@ -40,7 +41,7 @@ if typing.TYPE_CHECKING:
 
 @attrs_extensions.with_copy
 @attrs.define(kw_only=True, weakref_slot=False)
-class PollVoteAdd(shard_events.ShardEvent):
+class PollVoteCreate(shard_events.ShardEvent):
     """Event that is fired when a user add their vote to a poll.
 
     If the poll allows multiple selection, one event will be fired for each vote.
@@ -61,10 +62,10 @@ class PollVoteAdd(shard_events.ShardEvent):
     message_id: snowflakes.Snowflake = attrs.field()
     """ID of the message that the poll is in."""
 
-    guild_id: typing.Optional[snowflakes.Snowflake] = attrs.field(default=None)
+    guild_id: undefined.UndefinedOr[snowflakes.Snowflake] = attrs.field()
     """ID of the guild that the poll is in.
 
-    This will be [None][] if the poll is in a DM channel.
+    This will be [hikari.undefined.UNDEFINED][] if the poll is in a DM channel.
     """
 
     answer_id: int = attrs.field()
@@ -73,7 +74,7 @@ class PollVoteAdd(shard_events.ShardEvent):
 
 @attrs_extensions.with_copy
 @attrs.define(kw_only=True, weakref_slot=False)
-class PollVoteRemove(shard_events.ShardEvent):
+class PollVoteDelete(shard_events.ShardEvent):
     """Event that is fired when a user remove their vote to a poll.
 
     If the poll allows multiple selection, one event will be fired for each vote.
@@ -94,10 +95,10 @@ class PollVoteRemove(shard_events.ShardEvent):
     message_id: snowflakes.Snowflake = attrs.field()
     """ID of the message that the poll is in."""
 
-    guild_id: typing.Optional[snowflakes.Snowflake] = attrs.field(default=None)
+    guild_id: undefined.UndefinedOr[snowflakes.Snowflake] = attrs.field(default=undefined.UNDEFINED)
     """ID of the guild that the poll is in.
 
-    This will be [None][] if the poll is in a DM channel.
+    This will be [hikari.undefined.UNDEFINED][] if the poll is in a DM channel.
     """
 
     answer_id: int = attrs.field()

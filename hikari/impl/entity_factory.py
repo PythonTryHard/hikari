@@ -3760,7 +3760,7 @@ class EntityFactoryImpl(entity_factory.EntityFactory):
             answer_id=payload["answer_id"], count=payload["count"], me_voted=payload["me_voted"]
         )
 
-    def deserialize_poll(self, payload: data_binding.JSONObject) -> poll_models.PollObject:
+    def deserialize_poll(self, payload: data_binding.JSONObject) -> poll_models.Poll:
         question = payload["question"]
         expiry = time.iso8601_datetime_string_to_datetime(payload["expiry"])
         allow_multiselect = payload["allow_multiple_options"]
@@ -3773,18 +3773,14 @@ class EntityFactoryImpl(entity_factory.EntityFactory):
 
             answers.append(poll_models.PollAnswer(answer_id=answer_id, poll_media=poll_media))
 
-        _result_payload: typing.Optional[data_binding.JSONObject] = None
-        if (_result_payload := payload.get("result")) is not None:
-            is_finalized = _result_payload.get("is_finalized")
+        results = None
+        if (result_payload := payload.get("result")) is not None:
+            is_finalized = result_payload["is_finalized"]
 
-            answer_counts = tuple(
-                self._deserialize_poll_answer_count(item) for item in _result_payload.get("answer_counts")
-            )
+            answer_counts = tuple(self._deserialize_poll_answer_count(item) for item in result_payload["answer_counts"])
             results = poll_models.PollResult(is_finalized=is_finalized, answer_counts=answer_counts)
-        else:
-            results = None
 
-        return poll_models.PollObject(
+        return poll_models.Poll(
             question=question,
             answers=answers,
             expiry=expiry,
@@ -3819,7 +3815,7 @@ class EntityFactoryImpl(entity_factory.EntityFactory):
         return {
             "question": self._serialize_poll_media(poll.question),
             "answers": answers,
-            "expiry": poll.duration,
+            "duration": poll.duration,
             "allow_multiple_options": poll.allow_multiselect,
             "layout_type": poll.layout_type,
         }

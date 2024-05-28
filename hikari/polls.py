@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # cython: language_level=3
-# Copyright (c) 2024-present PythonTryHard
+# Copyright (c) 2024-present PythonTryHard, MPlatypus
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -31,7 +31,7 @@ __all__: typing.Sequence[str] = (
     "PollLayoutType",
     "PartialPoll",
     "PollBuilder",
-    "PollObject",
+    "Poll",
 )
 
 import typing
@@ -210,6 +210,8 @@ class PollBuilder(PartialPoll):
 
         Parameters
         ----------
+        answer_id
+            The ID of the answer to add.
         text
             The text of the answer to add.
         emoji
@@ -219,7 +221,18 @@ class PollBuilder(PartialPoll):
         -------
         PartialPoll
             This poll. Allows for call chaining.
+
+        Raises
+        ------
+        KeyError
+            If the answer ID already exists in the poll.
         """
+        # Raise an exception when user tries to add an answer with an already
+        # existing ID. While this is against the "spirit" of hikari, we want
+        # add_answer to only "add" answers, not "edit" them. That job is for
+        # edit_answer.g
+        if answer_id in self._answers:
+            raise KeyError(f"Answer ID {answer_id} already exists in the poll.")
 
         self._answers.append(
             PollAnswer(answer_id=-1, poll_media=PollMedia(text=text, emoji=_ensure_optional_emoji(emoji)))
@@ -276,8 +289,8 @@ class PollBuilder(PartialPoll):
 
         Raises
         ------
-            KeyError
-                Raised when the answer ID is not found in the poll.
+        KeyError
+            Raised when the answer ID is not found in the poll.
         """
 
         del self._answers[answer_id]
@@ -285,7 +298,7 @@ class PollBuilder(PartialPoll):
         return self
 
 
-class PollObject(PartialPoll):
+class Poll(PartialPoll):
     """Represents an existing poll."""
 
     __slots__: typing.Sequence[str] = ("_expiry", "_results")
