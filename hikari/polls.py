@@ -30,7 +30,6 @@ __all__: typing.Sequence[str] = (
     "PollAnswerCount",
     "PollLayoutType",
     "PartialPoll",
-    "PollCreate",
     "PollObject",
 )
 
@@ -38,7 +37,8 @@ import typing
 
 import attrs
 
-from hikari.emojis import Emoji
+from hikari import emojis
+from hikari import undefined
 from hikari.internal import attrs_extensions
 from hikari.internal import enums
 
@@ -46,10 +46,10 @@ if typing.TYPE_CHECKING:
     import datetime
 
 
-def _ensure_optional_emoji(emoji: typing.Optional[typing.Union[str, Emoji]]) -> Emoji | None:
+def _ensure_optional_emoji(emoji: typing.Optional[typing.Union[str, emojis.Emoji]]) -> emojis.Emoji | None:
     """Ensure the object is a [hikari.emojis.Emoji][]."""
     if emoji is not None:
-        return Emoji.parse(emoji) if isinstance(emoji, str) else emoji
+        return emojis.Emoji.parse(emoji) if isinstance(emoji, str) else emoji
     return None
 
 
@@ -61,7 +61,7 @@ class PollMedia:
     text: typing.Optional[str] = attrs.field(default=None, repr=True)
     """The text of the element, or [`None`][] if not present."""
 
-    emoji: typing.Optional[Emoji] = attrs.field(default=None, repr=True)
+    emoji: typing.Optional[emojis.Emoji] = attrs.field(default=None, repr=True)
     """The emoji of the element, or [`None`][] if not present."""
 
 
@@ -71,7 +71,7 @@ class PollAnswer:
     """Represents an answer to a poll."""
 
     answer_id: int = attrs.field(repr=True)
-    """The ID that labels this answer."""  # Is this user-settable?
+    """The ID that labels this answer."""
 
     poll_media: PollMedia = attrs.field(repr=True)
     """The [media][hikari.polls.PollMedia] associated with this answer."""
@@ -129,7 +129,7 @@ class PartialPoll:
         # would decrease long-term maintainability. I'm opting to use a `dict`
         # here to simplify the implementation with some performance trade-off
         # due to hashmap overhead.
-        self._answers: typing.MutableMapping[int, PollAnswer] = {}  # TODO: Do we need to set to None?
+        self._answers: typing.MutableSequence[PollAnswer] = []
 
     @property
     def question(self) -> PollMedia:
@@ -159,7 +159,7 @@ class PartialPoll:
         self._layout_type = value
 
     @property
-    def answers(self) -> typing.MutableMapping[int, PollAnswer]:
+    def answers(self) -> typing.Sequence[PollAnswer]:
         """Returns the answers of the poll.
 
         !!! note
@@ -170,8 +170,16 @@ class PartialPoll:
         return self._answers
 
 
-class PollCreate(PartialPoll):
-    """Used to create a poll."""  # TODO: Improve this docstring
+class PollBuilder(PartialPoll):
+    """Poll Builder.
+
+    Build a new poll to send as a message to discord.
+
+    Parameters
+    ----------
+    question
+        The question you wish to ask.
+    """  # TODO: Improve this docstring
 
     __slots__: typing.Sequence[str] = ("_duration",)
 
@@ -195,7 +203,7 @@ class PollCreate(PartialPoll):
     def duration(self, value: int) -> None:
         self._duration = value
 
-    def add_answer(self, answer_id: int, text: str, emoji: typing.Optional[Emoji]) -> PartialPoll:
+    def add_answer(self, text: str, emoji: typing.Optional[emojis.Emoji]) -> PartialPoll:
         """
         Add an answer to the poll.
 
@@ -212,16 +220,19 @@ class PollCreate(PartialPoll):
             This poll. Allows for call chaining.
         """
 
-        new_answer = PollAnswer(
-            answer_id=answer_id, poll_media=PollMedia(text=text, emoji=_ensure_optional_emoji(emoji))
+        self._answers.append(
+            PollAnswer(answer_id=-1, poll_media=PollMedia(text=text, emoji=_ensure_optional_emoji(emoji)))
         )
-
-        # FIXME: Not sure if this is ideal, but this will override an item, if it has the same answer id.
-        self._answers.update({answer_id: new_answer})
 
         return self
 
-    def edit_answer(self, answer_id: int, text: str, emoji: typing.Optional[typing.Union[str, Emoji]]) -> PartialPoll:
+    def edit_answer(
+        self,
+        index: int,
+        *,
+        text: typing.Optional[str] = None,
+        emoji: undefined.UndefinedNoneOr[typing.Union[str, emojis.Emoji]] = undefined.UNDEFINED,
+    ) -> PartialPoll:
         """
         Edit an answer in the poll.
 
@@ -236,20 +247,15 @@ class PollCreate(PartialPoll):
 
         Returns
         -------
-        PartialPoll
+        PollBuilder
             This poll. Allows for call chaining.
-
-        Raises
-        ------
-            KeyError
-                Raised when the answer ID is not found in the poll.
         """
-        answer = self._answers.get(answer_id, None)
-        if answer is None:
-            raise KeyError(f"Answer ID {answer_id} not found in the poll.")
 
-        new_poll_media = PollMedia(text=text, emoji=_ensure_optional_emoji(emoji))
-        answer.poll_media = new_poll_media
+        answer = self._answers[index]
+        if text:
+            answer.poll_media.text = text
+        if emoji is not undefined.UNDEFINED:
+            answer.poll_media.emoji = _ensure_optional_emoji(emoji)
 
         return self
 
@@ -272,8 +278,6 @@ class PollCreate(PartialPoll):
             KeyError
                 Raised when the answer ID is not found in the poll.
         """
-        if answer_id not in self._answers:
-            raise KeyError(f"Answer ID {answer_id} not found in the poll.")
 
         del self._answers[answer_id]
 
@@ -288,7 +292,7 @@ class PollObject(PartialPoll):
     def __init__(
         self,
         question: str,
-        answers: typing.MutableMapping[int, PollAnswer],
+        answers: typing.MutableSequence[PollAnswer],
         allow_multiselect: bool,
         expiry: datetime.datetime,
         results: typing.Optional[PollResult],
