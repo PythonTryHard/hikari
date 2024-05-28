@@ -46,6 +46,7 @@ from hikari.events import lifetime_events
 from hikari.events import member_events
 from hikari.events import message_events
 from hikari.events import monetization_events
+from hikari.events import poll_events
 from hikari.events import reaction_events
 from hikari.events import role_events
 from hikari.events import scheduled_events
@@ -953,4 +954,44 @@ class EventFactoryImpl(event_factory.EventFactory):
     ) -> monetization_events.EntitlementDeleteEvent:
         return monetization_events.EntitlementDeleteEvent(
             app=self._app, shard=shard, entitlement=self._app.entity_factory.deserialize_entitlement(payload)
+        )
+
+    ###############
+    # POLL EVENTS #
+    ###############
+
+    def deserialize_poll_create_event(
+        self, shard: gateway_shard.GatewayShard, payload: data_binding.JSONObject
+    ) -> poll_events.PollVoteAdd:
+        user_id = snowflakes.Snowflake(payload["user_id"])
+        channel_id = snowflakes.Snowflake(payload["channel_id"])
+        message_id = snowflakes.Snowflake(payload["message_id"])
+        guild_id = snowflakes.Snowflake(payload["guild_id"]) if payload.get("guild_id", None) else None
+        answer_id = payload["answer_id"]
+        return poll_events.PollVoteAdd(
+            app=self._app,
+            shard=shard,
+            user_id=user_id,
+            channel_id=channel_id,
+            message_id=message_id,
+            guild_id=guild_id,
+            answer_id=answer_id,
+        )
+
+    def deserialize_poll_delete_event(
+        self, shard: gateway_shard.GatewayShard, payload: data_binding.JSONObject
+    ) -> poll_events.PollVoteRemove:
+        user_id = snowflakes.Snowflake(payload["user_id"])
+        channel_id = snowflakes.Snowflake(payload["channel_id"])
+        message_id = snowflakes.Snowflake(payload["message_id"])
+        guild_id = snowflakes.Snowflake(payload["guild_id"]) if payload.get("guild_id", None) else None
+        answer_id = payload["answer_id"]
+        return poll_events.PollVoteRemove(
+            app=self._app,
+            shard=shard,
+            user_id=user_id,
+            channel_id=channel_id,
+            message_id=message_id,
+            guild_id=guild_id,
+            answer_id=answer_id,
         )
