@@ -210,8 +210,6 @@ class PollBuilder(PartialPoll):
 
         Parameters
         ----------
-        answer_id
-            The ID of the answer to add.
         text
             The text of the answer to add.
         emoji
@@ -230,9 +228,7 @@ class PollBuilder(PartialPoll):
         # Raise an exception when user tries to add an answer with an already
         # existing ID. While this is against the "spirit" of hikari, we want
         # add_answer to only "add" answers, not "edit" them. That job is for
-        # edit_answer.g
-        if answer_id in self._answers:
-            raise KeyError(f"Answer ID {answer_id} already exists in the poll.")
+        # edit_answer.
 
         self._answers.append(
             PollAnswer(answer_id=-1, poll_media=PollMedia(text=text, emoji=_ensure_optional_emoji(emoji)))
@@ -252,8 +248,8 @@ class PollBuilder(PartialPoll):
 
         Parameters
         ----------
-        answer_id
-            The ID of the answer to edit.
+        index
+            The index of the answer you want to edit.
         text
             The new text of the answer.
         emoji
