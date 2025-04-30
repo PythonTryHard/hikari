@@ -1,4 +1,3 @@
-# cython: language_level=3
 # Copyright (c) 2020 Nekokatt
 # Copyright (c) 2021-present davfsa
 #
@@ -25,17 +24,17 @@ from __future__ import annotations
 
 __all__: typing.Sequence[str] = (
     "CacheAware",
-    "EventManagerAware",
     "EntityFactoryAware",
     "EventFactoryAware",
+    "EventManagerAware",
     "ExecutorAware",
     "GatewayBotAware",
     "IntentsAware",
+    "InteractionServerAware",
     "NetworkSettingsAware",
     "RESTAware",
     "RESTBotAware",
     "Runnable",
-    "InteractionServerAware",
     "ShardAware",
     "VoiceAware",
 )
@@ -315,6 +314,11 @@ class ShardAware(
             changed.
         status
             The web status to show. If undefined, this will not be changed.
+
+        Raises
+        ------
+        hikari.errors.ComponentStateConflictError
+            When the shard is not connected so it cannot be interacted with.
         """
         raise NotImplementedError
 
@@ -349,6 +353,8 @@ class ShardAware(
         RuntimeError
             If the guild passed isn't covered by any of the shards in this sharded
             client.
+        hikari.errors.ComponentStateConflictError
+            When the shard is not connected so it cannot be interacted with.
         """
 
     @abc.abstractmethod
@@ -394,6 +400,8 @@ class ShardAware(
         RuntimeError
             If the guild passed isn't covered by any of the shards in this sharded
             client.
+        hikari.errors.ComponentStateConflictError
+            When the shard is not connected so it cannot be interacted with.
         """
 
 

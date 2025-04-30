@@ -1,4 +1,3 @@
-# cython: language_level=3
 # Copyright (c) 2020 Nekokatt
 # Copyright (c) 2021-present davfsa
 #
@@ -24,16 +23,15 @@
 from __future__ import annotations
 
 __all__: typing.Sequence[str] = (
-    "MessageType",
-    "MessageFlag",
-    "MessageActivityType",
     "Attachment",
-    "Reaction",
-    "MessageActivity",
-    "MessageInteraction",
-    "MessageReference",
-    "PartialMessage",
     "Message",
+    "MessageActivity",
+    "MessageActivityType",
+    "MessageFlag",
+    "MessageReference",
+    "MessageType",
+    "PartialMessage",
+    "Reaction",
 )
 
 import typing
@@ -135,6 +133,9 @@ class MessageType(int, enums.Enum):
 
     ROLE_SUBSCRIPTION_PURCHASE = 25
     """A message sent to indicate a role subscription has been purchased."""
+
+    POLL_RESULT = 46
+    """A message sent to indicate a poll has finished."""
 
 
 @typing.final
@@ -386,24 +387,6 @@ class MessageApplication(guilds.PartialApplication):
         )
 
 
-@attrs_extensions.with_copy
-@attrs.define(kw_only=True, repr=True, unsafe_hash=True, weakref_slot=False)
-class MessageInteraction:
-    """Representation of information provided for a message from an interaction."""
-
-    id: snowflakes.Snowflake = attrs.field(hash=True, repr=True)
-    """ID of the interaction this message was sent by."""
-
-    type: typing.Union[base_interactions.InteractionType, int] = attrs.field(eq=False, repr=True)
-    """The type of interaction this message was created by."""
-
-    name: str = attrs.field(eq=False, repr=True)
-    """Name of the application command the interaction is tied to."""
-
-    user: users_.User = attrs.field(eq=False, repr=True)
-    """Object of the user who invoked this interaction."""
-
-
 def _map_cache_maybe_discover(
     ids: typing.Iterable[snowflakes.Snowflake], cache_call: typing.Callable[[snowflakes.Snowflake], typing.Optional[_T]]
 ) -> dict[snowflakes.Snowflake, _T]:
@@ -539,7 +522,7 @@ class PartialMessage(snowflakes.Unique):
     embeds: undefined.UndefinedOr[typing.Sequence[embeds_.Embed]] = attrs.field(hash=False, eq=False, repr=False)
     """The message embeds."""
 
-    poll: undefined.UndefinedOr[polls_.Poll] = attrs.field(hash=False, eq=False, repr=False)
+    poll: undefined.UndefinedNoneOr[polls_.Poll] = attrs.field(hash=False, eq=False, repr=False)
     """The message poll."""
 
     reactions: undefined.UndefinedOr[typing.Sequence[Reaction]] = attrs.field(hash=False, eq=False, repr=False)
@@ -595,9 +578,6 @@ class PartialMessage(snowflakes.Unique):
     `type` is [`hikari.messages.MessageType.REPLY`][] and [`None`][], the message was deleted.
     """
 
-    interaction: undefined.UndefinedNoneOr[MessageInteraction] = attrs.field(hash=False, eq=False, repr=False)
-    """Information about the interaction this message was created by."""
-
     application_id: undefined.UndefinedNoneOr[snowflakes.Snowflake] = attrs.field(hash=False, eq=False, repr=False)
     """ID of the application this message was sent by.
 
@@ -609,6 +589,11 @@ class PartialMessage(snowflakes.Unique):
         hash=False, eq=False, repr=False
     )
     """Sequence of the components attached to this message."""
+
+    interaction_metadata: typing.Optional[base_interactions.PartialInteractionMetadata] = attrs.field(
+        hash=False, eq=False, repr=False
+    )
+    """Sent if the message is sent as a result of an interaction."""
 
     @property
     def channel_mention_ids(self) -> undefined.UndefinedOr[typing.Sequence[snowflakes.Snowflake]]:
@@ -768,7 +753,7 @@ class PartialMessage(snowflakes.Unique):
         ] = undefined.UNDEFINED,
         embed: undefined.UndefinedNoneOr[embeds_.Embed] = undefined.UNDEFINED,
         embeds: undefined.UndefinedNoneOr[typing.Sequence[embeds_.Embed]] = undefined.UNDEFINED,
-        poll: undefined.UndefinedOr[polls_.PollBuilder] = undefined.UNDEFINED,
+        poll: undefined.UndefinedOr[special_endpoints.PollBuilder] = undefined.UNDEFINED,
         mentions_everyone: undefined.UndefinedOr[bool] = undefined.UNDEFINED,
         mentions_reply: undefined.UndefinedOr[bool] = undefined.UNDEFINED,
         user_mentions: undefined.UndefinedOr[
@@ -941,7 +926,7 @@ class PartialMessage(snowflakes.Unique):
         components: undefined.UndefinedOr[typing.Sequence[special_endpoints.ComponentBuilder]] = undefined.UNDEFINED,
         embed: undefined.UndefinedOr[embeds_.Embed] = undefined.UNDEFINED,
         embeds: undefined.UndefinedOr[typing.Sequence[embeds_.Embed]] = undefined.UNDEFINED,
-        poll: undefined.UndefinedOr[polls_.PollBuilder] = undefined.UNDEFINED,
+        poll: undefined.UndefinedOr[special_endpoints.PollBuilder] = undefined.UNDEFINED,
         sticker: undefined.UndefinedOr[snowflakes.SnowflakeishOr[stickers_.PartialSticker]] = undefined.UNDEFINED,
         stickers: undefined.UndefinedOr[
             snowflakes.SnowflakeishSequence[stickers_.PartialSticker]
@@ -1379,6 +1364,9 @@ class Message(PartialMessage):
     embeds: typing.Sequence[embeds_.Embed] = attrs.field(hash=False, eq=False, repr=False)
     """The message embeds."""
 
+    poll: typing.Optional[polls_.Poll] = attrs.field(hash=False, eq=False, repr=False)
+    """The message poll."""
+
     reactions: typing.Sequence[Reaction] = attrs.field(hash=False, eq=False, repr=False)
     """The message reactions."""
 
@@ -1424,9 +1412,6 @@ class Message(PartialMessage):
 
     If `type` is [`hikari.messages.MessageType.REPLY`][] and [`None`][], the message was deleted.
     """
-
-    interaction: typing.Optional[MessageInteraction] = attrs.field(hash=False, eq=False, repr=False)
-    """Information about the interaction this message was created by."""
 
     application_id: typing.Optional[snowflakes.Snowflake] = attrs.field(hash=False, eq=False, repr=False)
     """ID of the application this message was sent by.

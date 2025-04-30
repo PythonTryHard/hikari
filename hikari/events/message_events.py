@@ -1,4 +1,3 @@
-# cython: language_level=3
 # Copyright (c) 2020 Nekokatt
 # Copyright (c) 2021-present davfsa
 #
@@ -24,17 +23,17 @@
 from __future__ import annotations
 
 __all__: typing.Sequence[str] = (
-    "MessageEvent",
-    "MessageCreateEvent",
-    "MessageUpdateEvent",
-    "MessageDeleteEvent",
-    "GuildMessageCreateEvent",
-    "GuildMessageUpdateEvent",
-    "GuildMessageDeleteEvent",
-    "GuildBulkMessageDeleteEvent",
     "DMMessageCreateEvent",
-    "DMMessageUpdateEvent",
     "DMMessageDeleteEvent",
+    "DMMessageUpdateEvent",
+    "GuildBulkMessageDeleteEvent",
+    "GuildMessageCreateEvent",
+    "GuildMessageDeleteEvent",
+    "GuildMessageUpdateEvent",
+    "MessageCreateEvent",
+    "MessageDeleteEvent",
+    "MessageEvent",
+    "MessageUpdateEvent",
 )
 
 import abc
@@ -191,9 +190,9 @@ class GuildMessageCreateEvent(MessageCreateEvent):
             return None
 
         channel = self.app.cache.get_guild_channel(self.channel_id)
-        assert channel is None or isinstance(
-            channel, channels.TextableGuildChannel
-        ), f"Cached channel ID is not a TextableGuildChannel, but a {type(channel).__name__}!"
+        assert channel is None or isinstance(channel, channels.TextableGuildChannel), (
+            f"Cached channel ID is not a TextableGuildChannel, but a {type(channel).__name__}!"
+        )
         return channel
 
     def get_guild(self) -> typing.Optional[guilds.GatewayGuild]:
@@ -429,9 +428,9 @@ class GuildMessageUpdateEvent(MessageUpdateEvent):
             return None
 
         channel = self.app.cache.get_guild_channel(self.channel_id)
-        assert channel is None or isinstance(
-            channel, channels.TextableGuildChannel
-        ), f"Cached channel ID is not a TextableGuildChannel, but a {type(channel).__name__}!"
+        assert channel is None or isinstance(channel, channels.TextableGuildChannel), (
+            f"Cached channel ID is not a TextableGuildChannel, but a {type(channel).__name__}!"
+        )
         return channel
 
     def get_guild(self) -> typing.Optional[guilds.GatewayGuild]:
@@ -544,9 +543,9 @@ class GuildMessageDeleteEvent(MessageDeleteEvent):
             return None
 
         channel = self.app.cache.get_guild_channel(self.channel_id)
-        assert channel is None or isinstance(
-            channel, channels.TextableGuildChannel
-        ), f"Cached channel ID is not a TextableGuildChannel, but a {type(channel).__name__}!"
+        assert channel is None or isinstance(channel, channels.TextableGuildChannel), (
+            f"Cached channel ID is not a TextableGuildChannel, but a {type(channel).__name__}!"
+        )
         return channel
 
     def get_guild(self) -> typing.Optional[guilds.GatewayGuild]:
@@ -640,9 +639,9 @@ class GuildBulkMessageDeleteEvent(shard_events.ShardEvent):
             return None
 
         channel = self.app.cache.get_guild_channel(self.channel_id)
-        assert channel is None or isinstance(
-            channel, channels.TextableGuildChannel
-        ), f"Cached channel ID is not a TextableGuildChannel, but a {type(channel).__name__}!"
+        assert channel is None or isinstance(channel, channels.TextableGuildChannel), (
+            f"Cached channel ID is not a TextableGuildChannel, but a {type(channel).__name__}!"
+        )
         return channel
 
     def get_guild(self) -> typing.Optional[guilds.GatewayGuild]:

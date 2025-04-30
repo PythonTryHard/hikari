@@ -1,4 +1,3 @@
-# cython: language_level=3
 # Copyright (c) 2020 Nekokatt
 # Copyright (c) 2021-present davfsa
 #
@@ -26,13 +25,13 @@ from __future__ import annotations
 __all__: typing.Sequence[str] = ("EventManager", "EventStream")
 
 import abc
-import asyncio
 import typing
 
 from hikari import iterators
 from hikari.events import base_events
 
 if typing.TYPE_CHECKING:
+    import asyncio
     import types
 
     from typing_extensions import Self
@@ -93,7 +92,7 @@ class EventStream(iterators.LazyIterator[base_events.EventT], abc.ABC):
         If called on an already closed streamer then this will do nothing.
 
         !!! note
-            [with streamer][] may be used as a short-cut for opening and
+            `with streamer` may be used as a short-cut for opening and
             closing a streamer.
         """
 
@@ -104,7 +103,7 @@ class EventStream(iterators.LazyIterator[base_events.EventT], abc.ABC):
         If called on an already started streamer then this will do nothing.
 
         !!! note
-            [with streamer][] may be used as a short-cut for opening and
+            `with streamer` may be used as a short-cut for opening and
             closing a stream.
         """
 
@@ -112,7 +111,7 @@ class EventStream(iterators.LazyIterator[base_events.EventT], abc.ABC):
     def filter(
         self,
         *predicates: typing.Union[tuple[str, typing.Any], typing.Callable[[base_events.EventT], bool]],
-        **attrs: typing.Any,
+        **attrs: object,
     ) -> Self:
         """Filter the items by one or more conditions.
 
@@ -418,14 +417,14 @@ class EventManager(abc.ABC):
         self,
         event_type: type[base_events.EventT],
         /,
-        timeout: typing.Union[float, int, None],
+        timeout: typing.Union[float, None],
         limit: typing.Optional[int] = None,
     ) -> EventStream[base_events.EventT]:
         """Return a stream iterator for the given event and sub-events.
 
         !!! warning
-            If you use [await stream.open()][] to start the stream then you must
-            also close it with [await stream.close()][] otherwise it may queue
+            If you use `await stream.open()` to start the stream then you must
+            also close it with `await stream.close()` otherwise it may queue
             events in memory indefinitely.
 
         Parameters
@@ -485,7 +484,7 @@ class EventManager(abc.ABC):
         self,
         event_type: type[base_events.EventT],
         /,
-        timeout: typing.Union[float, int, None],
+        timeout: typing.Union[float, None],
         predicate: typing.Optional[PredicateT[base_events.EventT]] = None,
     ) -> base_events.EventT:
         """Wait for a given event to occur once, then return the event.

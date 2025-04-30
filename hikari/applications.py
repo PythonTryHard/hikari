@@ -1,4 +1,3 @@
-# cython: language_level=3
 # Copyright (c) 2020 Nekokatt
 # Copyright (c) 2021-present davfsa
 #
@@ -24,25 +23,29 @@
 from __future__ import annotations
 
 __all__: typing.Sequence[str] = (
-    "InviteApplication",
     "Application",
+    "ApplicationContextType",
     "ApplicationFlags",
+    "ApplicationIntegrationConfiguration",
+    "ApplicationIntegrationType",
+    "ApplicationRoleConnectionMetadataRecord",
+    "ApplicationRoleConnectionMetadataRecordType",
     "AuthorizationApplication",
     "AuthorizationInformation",
     "ConnectionVisibility",
+    "InviteApplication",
     "OAuth2AuthorizationToken",
     "OAuth2ImplicitToken",
+    "OAuth2InstallParameters",
     "OAuth2Scope",
+    "OwnApplicationRoleConnection",
     "OwnConnection",
     "OwnGuild",
-    "OwnApplicationRoleConnection",
     "PartialOAuth2Token",
     "Team",
     "TeamMember",
     "TeamMembershipState",
     "TokenType",
-    "ApplicationRoleConnectionMetadataRecordType",
-    "ApplicationRoleConnectionMetadataRecord",
     "get_token_id",
 )
 
@@ -259,7 +262,7 @@ class ConnectionVisibility(int, enums.Enum):
 class OwnConnection:
     """Represents a user's connection with a third party account.
 
-    Returned by the [GET Current User Connections][] endpoint.
+    Returned by the `GET Current User Connections` endpoint.
     """
 
     id: str = attrs.field(hash=True, repr=True)
@@ -634,6 +637,11 @@ class Application(guilds.PartialApplication):
     approximate_guild_count: int = attrs.field(eq=False, hash=False, repr=False)
     """The approximate number of guilds this application is part of."""
 
+    integration_types_config: typing.Mapping[ApplicationIntegrationType, ApplicationIntegrationConfiguration] = (
+        attrs.field(eq=False, hash=False, repr=False)
+    )
+    """The default scopes and permissions for each integration type."""
+
     @property
     def cover_image_url(self) -> typing.Optional[files.URL]:
         """Rich presence cover image URL for this application, if set."""
@@ -846,6 +854,52 @@ class ApplicationRoleConnectionMetadataRecord:
     """A mapping of description localizations for this metadata field."""
 
 
+@attrs_extensions.with_copy
+@attrs.define(kw_only=True, weakref_slot=False)
+class ApplicationIntegrationConfiguration:
+    """The Application Integration Configuration for the related [ApplicationIntegrationType][]."""
+
+    oauth2_install_parameters: typing.Optional[OAuth2InstallParameters] = attrs.field(eq=False, hash=False, repr=True)
+    """The OAuth2 Install parameters for the Application Integration."""
+
+
+@attrs_extensions.with_copy
+@attrs.define(kw_only=True, weakref_slot=False)
+class OAuth2InstallParameters:
+    """OAuth2 Install Parameters."""
+
+    scopes: typing.Sequence[OAuth2Scope] = attrs.field(eq=False, hash=False, repr=True)
+    """The scopes the application will be added to the server with."""
+
+    permissions: permissions_.Permissions = attrs.field(eq=False, hash=False, repr=True)
+    """The permissions that will be requested for the bot role."""
+
+
+@typing.final
+class ApplicationIntegrationType(int, enums.Enum):
+    """Where an application can be installed."""
+
+    GUILD_INSTALL = 0
+    """Application is installable to all guilds."""
+
+    USER_INSTALL = 1
+    """Application is installable to all users."""
+
+
+@typing.final
+class ApplicationContextType(int, enums.Enum):
+    """The context in which to install the application."""
+
+    GUILD = 0
+    """Command can be ran inside servers."""
+
+    BOT_DM = 1
+    """Command can be ran inside the bot's DM."""
+
+    PRIVATE_CHANNEL = 2
+    """Command can be ran inside any of the user's DM or Group DM's, other than the bot's DM."""
+
+
 def get_token_id(token: str) -> snowflakes.Snowflake:
     """Try to get the bot ID stored in a token.
 
@@ -868,4 +922,5 @@ def get_token_id(token: str) -> snowflakes.Snowflake:
         return snowflakes.Snowflake(base64.b64decode(segment))
 
     except (TypeError, ValueError, IndexError) as exc:
-        raise ValueError("Unexpected token format") from exc
+        msg = "Unexpected token format"
+        raise ValueError(msg) from exc

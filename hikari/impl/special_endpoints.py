@@ -1,4 +1,3 @@
-# cython: language_level=3
 # Copyright (c) 2020 Nekokatt
 # Copyright (c) 2021-present davfsa
 #
@@ -28,24 +27,26 @@ from __future__ import annotations
 
 __all__: typing.Sequence[str] = (
     "AutocompleteChoiceBuilder",
+    "ChannelSelectMenuBuilder",
     "CommandBuilder",
-    "SlashCommandBuilder",
     "ContextMenuCommandBuilder",
-    "TypingIndicator",
     "GuildBuilder",
     "InteractionAutocompleteBuilder",
     "InteractionDeferredBuilder",
     "InteractionMessageBuilder",
+    "InteractionModalBuilder",
     "InteractiveButtonBuilder",
     "LinkButtonBuilder",
-    "SelectMenuBuilder",
-    "SelectOptionBuilder",
-    "ChannelSelectMenuBuilder",
-    "TextSelectMenuBuilder",
-    "TextInputBuilder",
-    "InteractionModalBuilder",
     "MessageActionRowBuilder",
     "ModalActionRowBuilder",
+    "PollAnswerBuilder",
+    "PollBuilder",
+    "SelectMenuBuilder",
+    "SelectOptionBuilder",
+    "SlashCommandBuilder",
+    "TextInputBuilder",
+    "TextSelectMenuBuilder",
+    "TypingIndicator",
 )
 
 import asyncio
@@ -54,6 +55,7 @@ import typing
 import attrs
 
 from hikari import channels
+from hikari import colors
 from hikari import commands
 from hikari import components as component_models
 from hikari import emojis
@@ -62,6 +64,7 @@ from hikari import files
 from hikari import iterators
 from hikari import locales
 from hikari import messages
+from hikari import polls
 from hikari import snowflakes
 from hikari import undefined
 from hikari.api import special_endpoints
@@ -80,7 +83,6 @@ if typing.TYPE_CHECKING:
 
     from hikari import applications
     from hikari import audit_logs
-    from hikari import colors
     from hikari import embeds as embeds_
     from hikari import guilds
     from hikari import permissions as permissions_
@@ -104,7 +106,11 @@ if typing.TYPE_CHECKING:
             auth: undefined.UndefinedNoneOr[str] = undefined.UNDEFINED,
         ) -> typing.Union[None, data_binding.JSONObject, data_binding.JSONArray]: ...
 
-    class _ThreadDeserializeSig(typing.Protocol["_GuildThreadChannelCovT"]):
+    _GuildThreadChannelT_co = typing.TypeVar(
+        "_GuildThreadChannelT_co", bound=channels.GuildThreadChannel, covariant=True
+    )
+
+    class _ThreadDeserializeSig(typing.Protocol[_GuildThreadChannelT_co]):
         def __call__(
             self,
             payload: data_binding.JSONObject,
@@ -112,13 +118,12 @@ if typing.TYPE_CHECKING:
             *,
             guild_id: undefined.UndefinedOr[snowflakes.Snowflake] = undefined.UNDEFINED,
             member: undefined.UndefinedNoneOr[channels.ThreadMember] = undefined.UNDEFINED,
-        ) -> _GuildThreadChannelCovT:
+        ) -> _GuildThreadChannelT_co:
             raise NotImplementedError
 
 
 _ParentT = typing.TypeVar("_ParentT")
 _GuildThreadChannelT = typing.TypeVar("_GuildThreadChannelT", bound=channels.GuildThreadChannel)
-_GuildThreadChannelCovT = typing.TypeVar("_GuildThreadChannelCovT", bound=channels.GuildThreadChannel, covariant=True)
 
 
 @typing.final
@@ -135,7 +140,7 @@ class TypingIndicator(special_endpoints.TypingIndicator):
         produced by that API.
     """
 
-    __slots__: typing.Sequence[str] = ("_route", "_request_call", "_task", "_rest_close_event", "_task_name")
+    __slots__: typing.Sequence[str] = ("_request_call", "_rest_close_event", "_route", "_task", "_task_name")
 
     def __init__(
         self,
@@ -154,7 +159,8 @@ class TypingIndicator(special_endpoints.TypingIndicator):
 
     async def __aenter__(self) -> None:
         if self._task is not None:
-            raise TypeError("Cannot enter a typing indicator context more than once")
+            msg = "Cannot enter a typing indicator context more than once"
+            raise TypeError(msg)
         self._task = asyncio.create_task(self._keep_typing(), name=self._task_name)
 
     async def __aexit__(
@@ -173,7 +179,8 @@ class TypingIndicator(special_endpoints.TypingIndicator):
         def __enter__(self) -> typing.NoReturn:
             # This is async only.
             cls = type(self)
-            raise TypeError(f"{cls.__module__}.{cls.__qualname__} is async-only, did you mean 'async with'?") from None
+            msg = f"{cls.__module__}.{cls.__qualname__} is async-only, did you mean 'async with'?"
+            raise TypeError(msg) from None
 
         def __exit__(
             self,
@@ -194,7 +201,7 @@ class TypingIndicator(special_endpoints.TypingIndicator):
                 # second if the request is slow to execute.
                 try:
                     await asyncio.gather(self, asyncio.wait_for(self._rest_close_event.wait(), timeout=9.0))
-                except asyncio.TimeoutError:
+                except asyncio.TimeoutError:  # noqa: PERF203
                     pass
 
         except (asyncio.CancelledError, errors.ComponentStateConflictError):
@@ -337,15 +344,16 @@ class GuildBuilder(special_endpoints.GuildBuilder):
         position: undefined.UndefinedOr[int] = undefined.UNDEFINED,
     ) -> snowflakes.Snowflake:
         if not undefined.any_undefined(color, colour):
-            raise TypeError("Cannot specify 'color' and 'colour' together.")
+            msg = "Cannot specify 'color' and 'colour' together."
+            raise TypeError(msg)
 
         if len(self._roles) == 0:
             if name != "@everyone":
-                raise ValueError("First role must always be the '@everyone' role")
+                msg = "First role must always be the '@everyone' role"
+                raise ValueError(msg)
             if not undefined.all_undefined(color, colour, hoist, mentionable, position):
-                raise ValueError(
-                    "Cannot pass 'color', 'colour', 'hoist', 'mentionable' nor 'position' to the '@everyone' role."
-                )
+                msg = "Cannot pass 'color', 'colour', 'hoist', 'mentionable' nor 'position' to the '@everyone' role."
+                raise ValueError(msg)
 
         snowflake_id = self._new_snowflake()
         payload = data_binding.JSONObjectBuilder()
@@ -504,7 +512,7 @@ class GuildBuilder(special_endpoints.GuildBuilder):
 class MessageIterator(iterators.BufferedLazyIterator["messages.Message"]):
     """Implementation of an iterator for message history."""
 
-    __slots__: typing.Sequence[str] = ("_entity_factory", "_request_call", "_direction", "_first_id", "_route")
+    __slots__: typing.Sequence[str] = ("_direction", "_entity_factory", "_first_id", "_request_call", "_route")
 
     def __init__(
         self,
@@ -544,7 +552,7 @@ class MessageIterator(iterators.BufferedLazyIterator["messages.Message"]):
 class ReactorIterator(iterators.BufferedLazyIterator["users.User"]):
     """Implementation of an iterator for message reactions."""
 
-    __slots__: typing.Sequence[str] = ("_entity_factory", "_first_id", "_route", "_request_call")
+    __slots__: typing.Sequence[str] = ("_entity_factory", "_first_id", "_request_call", "_route")
 
     def __init__(
         self,
@@ -581,12 +589,13 @@ class ReactorIterator(iterators.BufferedLazyIterator["users.User"]):
 class OwnGuildIterator(iterators.BufferedLazyIterator["applications.OwnGuild"]):
     """Implementation of an iterator for retrieving guilds you are in."""
 
-    __slots__: typing.Sequence[str] = ("_entity_factory", "_request_call", "_route", "_newest_first", "_first_id")
+    __slots__: typing.Sequence[str] = ("_entity_factory", "_first_id", "_newest_first", "_request_call", "_route")
 
     def __init__(
         self,
         entity_factory: entity_factory_.EntityFactory,
         request_call: _RequestCallSig,
+        *,
         newest_first: bool,
         first_id: str,
     ) -> None:
@@ -625,11 +634,11 @@ class GuildBanIterator(iterators.BufferedLazyIterator["guilds.GuildBan"]):
 
     __slots__: typing.Sequence[str] = (
         "_entity_factory",
+        "_first_id",
         "_guild_id",
+        "_newest_first",
         "_request_call",
         "_route",
-        "_first_id",
-        "_newest_first",
     )
 
     def __init__(
@@ -637,6 +646,7 @@ class GuildBanIterator(iterators.BufferedLazyIterator["guilds.GuildBan"]):
         entity_factory: entity_factory_.EntityFactory,
         request_call: _RequestCallSig,
         guild: snowflakes.SnowflakeishOr[guilds.PartialGuild],
+        *,
         newest_first: bool,
         first_id: str,
     ) -> None:
@@ -673,7 +683,7 @@ class GuildBanIterator(iterators.BufferedLazyIterator["guilds.GuildBan"]):
 class MemberIterator(iterators.BufferedLazyIterator["guilds.Member"]):
     """Implementation of an iterator for retrieving members in a guild."""
 
-    __slots__: typing.Sequence[str] = ("_entity_factory", "_guild_id", "_request_call", "_route", "_first_id")
+    __slots__: typing.Sequence[str] = ("_entity_factory", "_first_id", "_guild_id", "_request_call", "_route")
 
     def __init__(
         self,
@@ -725,10 +735,11 @@ class ScheduledEventUserIterator(iterators.BufferedLazyIterator["scheduled_event
         self,
         entity_factory: entity_factory_.EntityFactory,
         request_call: _RequestCallSig,
-        newest_first: bool,
-        first_id: str,
         guild: snowflakes.SnowflakeishOr[guilds.PartialGuild],
         event: snowflakes.SnowflakeishOr[scheduled_events.ScheduledEvent],
+        *,
+        first_id: str,
+        newest_first: bool,
     ) -> None:
         super().__init__()
         self._entity_factory = entity_factory
@@ -767,12 +778,12 @@ class AuditLogIterator(iterators.LazyIterator["audit_logs.AuditLog"]):
     """Iterator implementation for an audit log."""
 
     __slots__: typing.Sequence[str] = (
-        "_entity_factory",
         "_action_type",
+        "_entity_factory",
+        "_first_id",
         "_guild_id",
         "_request_call",
         "_route",
-        "_first_id",
         "_user",
     )
 
@@ -830,11 +841,12 @@ class GuildThreadIterator(iterators.BufferedLazyIterator[_GuildThreadChannelT]):
 
     def __init__(
         self,
-        deserialize: _ThreadDeserializeSig[_GuildThreadChannelCovT],
+        deserialize: _ThreadDeserializeSig[_GuildThreadChannelT],
         entity_factory: entity_factory_.EntityFactory,
         request_call: _RequestCallSig,
         route: routes.CompiledRoute,
         before: undefined.UndefinedOr[str],
+        *,
         before_is_timestamp: bool,
     ) -> None:
         super().__init__()
@@ -846,7 +858,7 @@ class GuildThreadIterator(iterators.BufferedLazyIterator[_GuildThreadChannelT]):
         self._request_call = request_call
         self._route = route
 
-    async def _next_chunk(self) -> typing.Optional[typing.Generator[_GuildThreadChannelCovT, typing.Any, None]]:
+    async def _next_chunk(self) -> typing.Optional[typing.Generator[_GuildThreadChannelT, typing.Any, None]]:
         if not self._has_more:
             return None
 
@@ -911,7 +923,7 @@ class AutocompleteChoiceBuilder(special_endpoints.AutocompleteChoiceBuilder):
         self._name = name
         return self
 
-    def set_value(self, value: typing.Union[int, float, str], /) -> Self:
+    def set_value(self, value: typing.Union[float, str], /) -> Self:
         self._value = value
         return self
 
@@ -1274,16 +1286,23 @@ class CommandBuilder(special_endpoints.CommandBuilder):
     _id: undefined.UndefinedOr[snowflakes.Snowflake] = attrs.field(
         alias="id", default=undefined.UNDEFINED, kw_only=True
     )
+
     _default_member_permissions: typing.Union[undefined.UndefinedType, int, permissions_.Permissions] = attrs.field(
         alias="default_member_permissions", default=undefined.UNDEFINED, kw_only=True
     )
-    _is_dm_enabled: undefined.UndefinedOr[bool] = attrs.field(
-        alias="is_dm_enabled", default=undefined.UNDEFINED, kw_only=True
-    )
+
     _is_nsfw: undefined.UndefinedOr[bool] = attrs.field(alias="is_nsfw", default=undefined.UNDEFINED, kw_only=True)
 
     _name_localizations: typing.Mapping[typing.Union[locales.Locale, str], str] = attrs.field(
         alias="name_localizations", factory=dict, kw_only=True
+    )
+
+    _integration_types: undefined.UndefinedOr[typing.Sequence[applications.ApplicationIntegrationType]] = attrs.field(
+        alias="integration_types", default=undefined.UNDEFINED, kw_only=True
+    )
+
+    _context_types: undefined.UndefinedOr[typing.Sequence[applications.ApplicationContextType]] = attrs.field(
+        alias="context_types", default=undefined.UNDEFINED, kw_only=True
     )
 
     @property
@@ -1295,16 +1314,24 @@ class CommandBuilder(special_endpoints.CommandBuilder):
         return self._default_member_permissions
 
     @property
-    def is_dm_enabled(self) -> undefined.UndefinedOr[bool]:
-        return self._is_dm_enabled
-
-    @property
     def is_nsfw(self) -> undefined.UndefinedOr[bool]:
         return self._is_nsfw
 
     @property
     def name(self) -> str:
         return self._name
+
+    @property
+    def integration_types(self) -> undefined.UndefinedOr[typing.Sequence[applications.ApplicationIntegrationType]]:
+        return self._integration_types
+
+    @property
+    def context_types(self) -> undefined.UndefinedOr[typing.Sequence[applications.ApplicationContextType]]:
+        return self._context_types
+
+    @property
+    def name_localizations(self) -> typing.Mapping[typing.Union[locales.Locale, str], str]:
+        return self._name_localizations
 
     def set_name(self, name: str, /) -> Self:
         self._name = name
@@ -1320,17 +1347,21 @@ class CommandBuilder(special_endpoints.CommandBuilder):
         self._default_member_permissions = default_member_permissions
         return self
 
-    def set_is_dm_enabled(self, state: undefined.UndefinedOr[bool], /) -> Self:
-        self._is_dm_enabled = state
-        return self
-
     def set_is_nsfw(self, state: undefined.UndefinedOr[bool], /) -> Self:
         self._is_nsfw = state
         return self
 
-    @property
-    def name_localizations(self) -> typing.Mapping[typing.Union[locales.Locale, str], str]:
-        return self._name_localizations
+    def set_integration_types(
+        self, integration_types: undefined.UndefinedOr[typing.Sequence[applications.ApplicationIntegrationType]]
+    ) -> Self:
+        self._integration_types = integration_types
+        return self
+
+    def set_context_types(
+        self, context_types: undefined.UndefinedOr[typing.Sequence[applications.ApplicationContextType]]
+    ) -> Self:
+        self._context_types = context_types
+        return self
 
     def set_name_localizations(
         self, name_localizations: typing.Mapping[typing.Union[locales.Locale, str], str], /
@@ -1344,8 +1375,9 @@ class CommandBuilder(special_endpoints.CommandBuilder):
         data["type"] = self.type
         data.put_snowflake("id", self._id)
         data.put("name_localizations", self._name_localizations)
-        data.put("dm_permission", self._is_dm_enabled)
         data.put("nsfw", self._is_nsfw)
+        data.put_array("integration_types", self._integration_types)
+        data.put_array("contexts", self._context_types)
 
         # Discord considers 0 the same thing as ADMINISTRATORS, but we make it nicer to work with
         # by using it correctly.
@@ -1424,7 +1456,6 @@ class SlashCommandBuilder(CommandBuilder, special_endpoints.SlashCommandBuilder)
             name_localizations=self._name_localizations,
             description_localizations=self._description_localizations,
             default_member_permissions=self._default_member_permissions,
-            dm_enabled=self._is_dm_enabled,
             nsfw=self._is_nsfw,
         )
 
@@ -1457,7 +1488,6 @@ class ContextMenuCommandBuilder(CommandBuilder, special_endpoints.ContextMenuCom
             guild=guild,
             name_localizations=self._name_localizations,
             default_member_permissions=self._default_member_permissions,
-            dm_enabled=self._is_dm_enabled,
             nsfw=self.is_nsfw,
         )
 
@@ -1478,7 +1508,7 @@ def _build_emoji(
         A union of the custom emoji's id if defined (index 0) or the unicode
         emoji's string representation (index 1).
     """
-    # Since these builder classes may be re-used, this method should be called when the builder is being constructed.
+    # Since these builder classes may be reused, this method should be called when the builder is being constructed.
     if emoji is not undefined.UNDEFINED:
         if isinstance(emoji, (int, emojis.CustomEmoji)):
             return str(int(emoji)), undefined.UNDEFINED
@@ -1536,7 +1566,7 @@ class _ButtonBuilder(special_endpoints.ButtonBuilder):
         self._label = label
         return self
 
-    def set_is_disabled(self, state: bool, /) -> Self:
+    def set_is_disabled(self, state: bool, /) -> Self:  # noqa: FBT001 - Boolean-typed positional argument
         self._is_disabled = state
         return self
 
@@ -1650,7 +1680,7 @@ class SelectOptionBuilder(special_endpoints.SelectOptionBuilder):
         self._emoji = emoji
         return self
 
-    def set_is_default(self, state: bool, /) -> Self:
+    def set_is_default(self, state: bool, /) -> Self:  # noqa: FBT001 - Boolean-typed positional argument
         self._is_default = state
         return self
 
@@ -1711,7 +1741,7 @@ class SelectMenuBuilder(special_endpoints.SelectMenuBuilder):
         self._custom_id = custom_id
         return self
 
-    def set_is_disabled(self, state: bool, /) -> Self:
+    def set_is_disabled(self, state: bool, /) -> Self:  # noqa: FBT001 - Boolean-typed positional argument
         self._is_disabled = state
         return self
 
@@ -1802,7 +1832,8 @@ class TextSelectMenuBuilder(SelectMenuBuilder, special_endpoints.TextSelectMenuB
     @property
     def parent(self) -> _ParentT:
         if self._parent is None:
-            raise RuntimeError("This menu has no parent")
+            msg = "This menu has no parent"
+            raise RuntimeError(msg)
 
         return self._parent
 
@@ -1933,7 +1964,7 @@ class TextInputBuilder(special_endpoints.TextInputBuilder):
         self._value = value
         return self
 
-    def set_required(self, required: bool, /) -> Self:
+    def set_required(self, required: bool, /) -> Self:  # noqa: FBT001 - Boolean-typed positional argument
         self._required = required
         return self
 
@@ -1978,9 +2009,8 @@ class MessageActionRowBuilder(special_endpoints.MessageActionRowBuilder):
 
     def _assert_can_add_type(self, type_: typing.Union[component_models.ComponentType, int], /) -> None:
         if self._stored_type is not None and self._stored_type != type_:
-            raise ValueError(
-                f"{type_} component type cannot be added to a container which already holds {self._stored_type}"
-            )
+            msg = f"{type_} component type cannot be added to a container which already holds {self._stored_type}"
+            raise ValueError(msg)
 
         self._stored_type = type_
 
@@ -2105,9 +2135,8 @@ class ModalActionRowBuilder(special_endpoints.ModalActionRowBuilder):
 
     def _assert_can_add_type(self, type_: typing.Union[component_models.ComponentType, int], /) -> None:
         if self._stored_type is not None and self._stored_type != type_:
-            raise ValueError(
-                f"{type_} component type cannot be added to a container which already holds {self._stored_type}"
-            )
+            msg = f"{type_} component type cannot be added to a container which already holds {self._stored_type}"
+            raise ValueError(msg)
 
         self._stored_type = type_
 
@@ -2147,3 +2176,89 @@ class ModalActionRowBuilder(special_endpoints.ModalActionRowBuilder):
             "type": component_models.ComponentType.ACTION_ROW,
             "components": [component.build() for component in self._components],
         }
+
+
+@attrs.define(kw_only=True, weakref_slot=False)
+class PollBuilder(special_endpoints.PollBuilder):
+    """Standard implementation of [`hikari.api.special_endpoints.PollBuilder`][]."""
+
+    _question_text: str = attrs.field(alias="question_text")
+    _answers: list[special_endpoints.PollAnswerBuilder] = attrs.field(alias="answers", factory=list)
+    _duration: undefined.UndefinedOr[int] = attrs.field(alias="duration", default=undefined.UNDEFINED)
+    _allow_multiselect: bool = attrs.field(alias="allow_multiselect")
+    _layout_type: undefined.UndefinedOr[polls.PollLayoutType] = attrs.field(
+        alias="layout_type", default=undefined.UNDEFINED
+    )
+
+    @property
+    def question_text(self) -> str:
+        return self._question_text
+
+    @property
+    def answers(self) -> typing.Sequence[special_endpoints.PollAnswerBuilder]:
+        return self._answers
+
+    @property
+    def duration(self) -> undefined.UndefinedOr[int]:
+        return self._duration
+
+    @property
+    def allow_multiselect(self) -> bool:
+        return self._allow_multiselect
+
+    @property
+    def layout_type(self) -> undefined.UndefinedOr[polls.PollLayoutType]:
+        return self._layout_type
+
+    def add_answer(
+        self,
+        *,
+        text: undefined.UndefinedOr[str] = undefined.UNDEFINED,
+        emoji: undefined.UndefinedOr[emojis.Emoji] = undefined.UNDEFINED,
+    ) -> Self:
+        answer = PollAnswerBuilder(text=text, emoji=emoji)
+        self._answers.append(answer)
+        return self
+
+    def build(self) -> typing.MutableMapping[str, typing.Any]:
+        payload = data_binding.JSONObjectBuilder()
+
+        payload.put("question", {"text": self._question_text})
+        payload.put("answers", [answer.build() for answer in self._answers])
+        payload.put("duration", self._duration)
+        payload.put("allow_multiselect", self._allow_multiselect)
+        payload.put("layout_type", self._layout_type)
+
+        return payload
+
+
+@attrs.define(kw_only=True, weakref_slot=False)
+class PollAnswerBuilder(special_endpoints.PollAnswerBuilder):
+    """Standard implementation of [`hikari.api.special_endpoints.PollAnswerBuilder`][]."""
+
+    _text: undefined.UndefinedOr[str] = attrs.field(alias="text", default=undefined.UNDEFINED)
+    _emoji: undefined.UndefinedOr[emojis.Emoji] = attrs.field(alias="emoji", default=undefined.UNDEFINED)
+
+    @property
+    def text(self) -> undefined.UndefinedOr[str]:
+        return self._text
+
+    @property
+    def emoji(self) -> undefined.UndefinedOr[emojis.Emoji]:
+        return self._emoji
+
+    def build(self) -> typing.MutableMapping[str, typing.Any]:
+        payload = data_binding.JSONObjectBuilder()
+
+        payload.put("text", self._text)
+
+        if self._emoji is not undefined.UNDEFINED:
+            emoji_id, emoji_name = _build_emoji(self._emoji)
+
+            if emoji_id is not undefined.UNDEFINED:
+                payload["emoji"] = {"id": emoji_id}
+
+            elif emoji_name is not undefined.UNDEFINED:
+                payload["emoji"] = {"name": emoji_name}
+
+        return {"poll_media": payload}

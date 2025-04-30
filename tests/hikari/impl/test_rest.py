@@ -90,7 +90,11 @@ class TestRestProvider:
 
     @pytest.fixture
     def rest_provider(self, rest_client, executor, entity_factory):
-        return rest._RESTProvider(lambda: entity_factory, executor, lambda: rest_client)
+        provider = rest._RESTProvider(executor)
+
+        provider.update(rest_client, entity_factory)
+
+        return provider
 
     def test_rest_property(self, rest_provider, rest_client):
         assert rest_provider.rest == rest_client
@@ -477,18 +481,21 @@ class StubModel(snowflakes.Unique):
 
 
 class TestStringifyHttpMessage:
-    def test_when_body_is_None(self, rest_client):
+    def test_when_body_is_str(self, rest_client):
         headers = {"HEADER1": "value1", "HEADER2": "value2", "Authorization": "this will never see the light of day"}
-        expected_return = "    HEADER1: value1\n    HEADER2: value2\n    Authorization: **REDACTED TOKEN**"
-        assert rest._stringify_http_message(headers, None) == expected_return
 
-    @pytest.mark.parametrize(("body", "expected"), [(bytes("hello :)", "ascii"), "hello :)"), (123, "123")])
-    def test_when_body_is_not_None(self, rest_client, body, expected):
+        returned = rest._stringify_http_message(headers, None)
+
+        assert returned == "    HEADER1: value1\n    HEADER2: value2\n    Authorization: **REDACTED TOKEN**"
+
+    def test_when_body_is_not_None(self, rest_client):
         headers = {"HEADER1": "value1", "HEADER2": "value2", "Authorization": "this will never see the light of day"}
-        expected_return = (
-            f"    HEADER1: value1\n    HEADER2: value2\n    Authorization: **REDACTED TOKEN**\n\n    {expected}"
+
+        returned = rest._stringify_http_message(headers, bytes("hello :)", "ascii"))
+
+        assert returned == (
+            f"    HEADER1: value1\n    HEADER2: value2\n    Authorization: **REDACTED TOKEN**\n\n    hello :)"
         )
-        assert rest._stringify_http_message(headers, body) == expected_return
 
 
 class TestTransformEmojiToUrlFormat:
@@ -1102,7 +1109,7 @@ class TestRESTClientImpl:
             iterator = rest_client.fetch_bans(187, newest_first=True, start_at=StubModel(65652342134))
 
         iterator_cls.assert_called_once_with(
-            rest_client._entity_factory, rest_client._request, 187, True, "65652342134"
+            rest_client._entity_factory, rest_client._request, 187, newest_first=True, first_id="65652342134"
         )
         assert iterator is iterator_cls.return_value
 
@@ -1112,7 +1119,7 @@ class TestRESTClientImpl:
             iterator = rest_client.fetch_bans(9000, newest_first=True, start_at=start_at)
 
         iterator_cls.assert_called_once_with(
-            rest_client._entity_factory, rest_client._request, 9000, True, "950000286338908160"
+            rest_client._entity_factory, rest_client._request, 9000, newest_first=True, first_id="950000286338908160"
         )
         assert iterator is iterator_cls.return_value
 
@@ -1121,7 +1128,11 @@ class TestRESTClientImpl:
             iterator = rest_client.fetch_bans(8844)
 
         iterator_cls.assert_called_once_with(
-            rest_client._entity_factory, rest_client._request, 8844, False, str(snowflakes.Snowflake.min())
+            rest_client._entity_factory,
+            rest_client._request,
+            8844,
+            newest_first=False,
+            first_id=str(snowflakes.Snowflake.min()),
         )
         assert iterator is iterator_cls.return_value
 
@@ -1130,7 +1141,11 @@ class TestRESTClientImpl:
             iterator = rest_client.fetch_bans(3848, newest_first=True)
 
         iterator_cls.assert_called_once_with(
-            rest_client._entity_factory, rest_client._request, 3848, True, str(snowflakes.Snowflake.max())
+            rest_client._entity_factory,
+            rest_client._request,
+            3848,
+            newest_first=True,
+            first_id=str(snowflakes.Snowflake.max()),
         )
         assert iterator is iterator_cls.return_value
 
@@ -1588,7 +1603,12 @@ class TestRESTClientImpl:
             )
 
         iterator_cls.assert_called_once_with(
-            rest_client._entity_factory, rest_client._request, True, "65652342134", 33432234, 6666655555
+            rest_client._entity_factory,
+            rest_client._request,
+            33432234,
+            6666655555,
+            first_id="65652342134",
+            newest_first=True,
         )
         assert iterator is iterator_cls.return_value
 
@@ -1598,7 +1618,12 @@ class TestRESTClientImpl:
             iterator = rest_client.fetch_scheduled_event_users(54123, 656324, newest_first=True, start_at=start_at)
 
         iterator_cls.assert_called_once_with(
-            rest_client._entity_factory, rest_client._request, True, "950000286338908160", 54123, 656324
+            rest_client._entity_factory,
+            rest_client._request,
+            54123,
+            656324,
+            newest_first=True,
+            first_id="950000286338908160",
         )
         assert iterator is iterator_cls.return_value
 
@@ -1609,10 +1634,10 @@ class TestRESTClientImpl:
         iterator_cls.assert_called_once_with(
             rest_client._entity_factory,
             rest_client._request,
-            False,
-            str(snowflakes.Snowflake.min()),
             54563245,
             123321123,
+            newest_first=False,
+            first_id=str(snowflakes.Snowflake.min()),
         )
         assert iterator is iterator_cls.return_value
 
@@ -1623,7 +1648,12 @@ class TestRESTClientImpl:
             iterator = rest_client.fetch_scheduled_event_users(6423, 65456234, newest_first=True)
 
         iterator_cls.assert_called_once_with(
-            rest_client._entity_factory, rest_client._request, True, str(snowflakes.Snowflake.max()), 6423, 65456234
+            rest_client._entity_factory,
+            rest_client._request,
+            6423,
+            65456234,
+            newest_first=True,
+            first_id=str(snowflakes.Snowflake.max()),
         )
         assert iterator is iterator_cls.return_value
 
@@ -1717,7 +1747,7 @@ class TestRESTClientImplAsync:
             status = http.HTTPStatus.UNAUTHORIZED
             content_type = rest._APPLICATION_JSON
             reason = "cause why not"
-            headers = {"HEADER": "value", "HEADER": "value"}
+            headers = {"HEADER": "value"}
 
             async def read(self):
                 return '{"something": null}'
@@ -1744,7 +1774,7 @@ class TestRESTClientImplAsync:
             status = http.HTTPStatus.UNAUTHORIZED
             content_type = rest._APPLICATION_JSON
             reason = "cause why not"
-            headers = {"HEADER": "value", "HEADER": "value"}
+            headers = {"HEADER": "value"}
             real_url = "okokokok"
 
             async def read(self):
@@ -1839,7 +1869,7 @@ class TestRESTClientImplAsync:
             status = http.HTTPStatus.OK
             content_type = rest._APPLICATION_JSON
             reason = "cause why not"
-            headers = {"HEADER": "value", "HEADER": "value"}
+            headers = {"HEADER": "value"}
 
             async def read(self):
                 return '{"something": null}'
@@ -2232,11 +2262,21 @@ class TestRESTClientImplAsync:
         expected_route = routes.DELETE_CHANNEL.compile(channel=123)
         rest_client._request = mock.AsyncMock(return_value={"id": "NNNNN"})
 
+        result = await rest_client.delete_channel(StubModel(123), reason="some reason :)")
+
+        assert result is rest_client._entity_factory.deserialize_channel.return_value
+        rest_client._entity_factory.deserialize_channel.assert_called_once_with(rest_client._request.return_value)
+        rest_client._request.assert_awaited_once_with(expected_route, reason="some reason :)")
+
+    async def test_delete_channel_without_optionals(self, rest_client):
+        expected_route = routes.DELETE_CHANNEL.compile(channel=123)
+        rest_client._request = mock.AsyncMock(return_value={"id": "NNNNN"})
+
         result = await rest_client.delete_channel(StubModel(123))
 
         assert result is rest_client._entity_factory.deserialize_channel.return_value
         rest_client._entity_factory.deserialize_channel.assert_called_once_with(rest_client._request.return_value)
-        rest_client._request.assert_awaited_once_with(expected_route)
+        rest_client._request.assert_awaited_once_with(expected_route, reason=undefined.UNDEFINED)
 
     async def test_edit_my_voice_state_when_requesting_to_speak(self, rest_client):
         rest_client._request = mock.AsyncMock()
@@ -2776,8 +2816,8 @@ class TestRESTClientImplAsync:
         expected_route = routes.DELETE_CHANNEL_MESSAGE.compile(channel=123, message=456)
         rest_client._request = mock.AsyncMock()
 
-        await rest_client.delete_message(StubModel(123), StubModel(456))
-        rest_client._request.assert_awaited_once_with(expected_route)
+        await rest_client.delete_message(StubModel(123), StubModel(456), reason="broke laws")
+        rest_client._request.assert_awaited_once_with(expected_route, reason="broke laws")
 
     async def test_delete_messages(self, rest_client):
         messages = [StubModel(i) for i in range(200)]
@@ -2787,10 +2827,13 @@ class TestRESTClientImplAsync:
 
         rest_client._request = mock.AsyncMock()
 
-        await rest_client.delete_messages(StubModel(123), *messages)
+        await rest_client.delete_messages(StubModel(123), *messages, reason="broke laws")
 
         rest_client._request.assert_has_awaits(
-            [mock.call(expected_route, json=expected_json1), mock.call(expected_route, json=expected_json2)]
+            [
+                mock.call(expected_route, json=expected_json1, reason="broke laws"),
+                mock.call(expected_route, json=expected_json2, reason="broke laws"),
+            ]
         )
 
     async def test_delete_messages_when_one_message_left_in_chunk_and_delete_message_raises_message_not_found(
@@ -2806,12 +2849,12 @@ class TestRESTClientImplAsync:
             side_effect=errors.NotFoundError(url="", headers={}, raw_body="", code=10008)
         )
 
-        await rest_client.delete_messages(channel, *messages)
+        await rest_client.delete_messages(channel, *messages, reason="broke laws")
 
         rest_client._request.assert_awaited_once_with(
-            routes.POST_DELETE_CHANNEL_MESSAGES_BULK.compile(channel=channel), json=expected_json
+            routes.POST_DELETE_CHANNEL_MESSAGES_BULK.compile(channel=channel), json=expected_json, reason="broke laws"
         )
-        rest_client.delete_message.assert_awaited_once_with(channel, message)
+        rest_client.delete_message.assert_awaited_once_with(channel, message, reason="broke laws")
 
     async def test_delete_messages_when_one_message_left_in_chunk_and_delete_message_raises_channel_not_found(
         self, rest_client
@@ -2826,14 +2869,14 @@ class TestRESTClientImplAsync:
         rest_client.delete_message = mock.AsyncMock(side_effect=mock_not_found)
 
         with pytest.raises(errors.BulkDeleteError) as exc_info:
-            await rest_client.delete_messages(channel, *messages)
+            await rest_client.delete_messages(channel, *messages, reason="broke laws")
 
         assert exc_info.value.__cause__ is mock_not_found
 
         rest_client._request.assert_awaited_once_with(
-            routes.POST_DELETE_CHANNEL_MESSAGES_BULK.compile(channel=channel), json=expected_json
+            routes.POST_DELETE_CHANNEL_MESSAGES_BULK.compile(channel=channel), json=expected_json, reason="broke laws"
         )
-        rest_client.delete_message.assert_awaited_once_with(channel, message)
+        rest_client.delete_message.assert_awaited_once_with(channel, message, reason="broke laws")
 
     async def test_delete_messages_when_one_message_left_in_chunk(self, rest_client):
         channel = StubModel(123)
@@ -2843,12 +2886,16 @@ class TestRESTClientImplAsync:
 
         rest_client._request = mock.AsyncMock()
 
-        await rest_client.delete_messages(channel, *messages)
+        await rest_client.delete_messages(channel, *messages, reason="broke laws")
 
         rest_client._request.assert_has_awaits(
             [
-                mock.call(routes.POST_DELETE_CHANNEL_MESSAGES_BULK.compile(channel=channel), json=expected_json),
-                mock.call(routes.DELETE_CHANNEL_MESSAGE.compile(channel=channel, message=message)),
+                mock.call(
+                    routes.POST_DELETE_CHANNEL_MESSAGES_BULK.compile(channel=channel),
+                    json=expected_json,
+                    reason="broke laws",
+                ),
+                mock.call(routes.DELETE_CHANNEL_MESSAGE.compile(channel=channel, message=message), reason="broke laws"),
             ]
         )
 
@@ -2867,17 +2914,19 @@ class TestRESTClientImplAsync:
 
         rest_client._request = mock.AsyncMock()
 
-        await rest_client.delete_messages(channel, messages, StubModel(444), StubModel(6523))
+        await rest_client.delete_messages(channel, messages, StubModel(444), StubModel(6523), reason="broke laws")
 
         rest_client._request.assert_has_awaits(
             [
                 mock.call(
                     routes.POST_DELETE_CHANNEL_MESSAGES_BULK.compile(channel=channel),
                     json={"messages": [str(i) for i in range(100)]},
+                    reason="broke laws",
                 ),
                 mock.call(
                     routes.POST_DELETE_CHANNEL_MESSAGES_BULK.compile(channel=channel),
                     json={"messages": ["100", "444", "6523"]},
+                    reason="broke laws",
                 ),
             ]
         )
@@ -2888,17 +2937,19 @@ class TestRESTClientImplAsync:
 
         rest_client._request = mock.AsyncMock()
 
-        await rest_client.delete_messages(channel, iterator)
+        await rest_client.delete_messages(channel, iterator, reason="broke laws")
 
         rest_client._request.assert_has_awaits(
             [
                 mock.call(
                     routes.POST_DELETE_CHANNEL_MESSAGES_BULK.compile(channel=channel),
                     json={"messages": [str(i) for i in range(100)]},
+                    reason="broke laws",
                 ),
                 mock.call(
                     routes.POST_DELETE_CHANNEL_MESSAGES_BULK.compile(channel=channel),
                     json={"messages": ["100", "101", "102"]},
+                    reason="broke laws",
                 ),
             ]
         )
@@ -3131,6 +3182,7 @@ class TestRESTClientImplAsync:
         component_obj2 = object()
         embed_obj = object()
         embed_obj2 = object()
+        poll_obj = object()
         mock_form = mock.Mock()
         mock_body = data_binding.JSONObjectBuilder()
         mock_body.put("testing", "ensure_in_test")
@@ -3150,6 +3202,7 @@ class TestRESTClientImplAsync:
             components=[component_obj2],
             embed=embed_obj,
             embeds=[embed_obj2],
+            poll=poll_obj,
             tts=True,
             mentions_everyone=False,
             user_mentions=[9876],
@@ -3166,6 +3219,7 @@ class TestRESTClientImplAsync:
             components=[component_obj2],
             embed=embed_obj,
             embeds=[embed_obj2],
+            poll=poll_obj,
             tts=True,
             flags=120,
             mentions_everyone=False,
@@ -3203,6 +3257,7 @@ class TestRESTClientImplAsync:
             components=undefined.UNDEFINED,
             embed=undefined.UNDEFINED,
             embeds=undefined.UNDEFINED,
+            poll=undefined.UNDEFINED,
             tts=undefined.UNDEFINED,
             flags=undefined.UNDEFINED,
             mentions_everyone=undefined.UNDEFINED,
@@ -3237,6 +3292,7 @@ class TestRESTClientImplAsync:
             components=undefined.UNDEFINED,
             embed=undefined.UNDEFINED,
             embeds=undefined.UNDEFINED,
+            poll=undefined.UNDEFINED,
             tts=undefined.UNDEFINED,
             flags=undefined.UNDEFINED,
             mentions_everyone=undefined.UNDEFINED,
@@ -3258,6 +3314,7 @@ class TestRESTClientImplAsync:
         component_obj2 = object()
         embed_obj = object()
         embed_obj2 = object()
+        poll_obj = object()
         mock_body = data_binding.JSONObjectBuilder()
         mock_body.put("testing", "ensure_in_test")
         expected_route = routes.POST_WEBHOOK_WITH_TOKEN.compile(webhook=432, token="hi, im a token")
@@ -3276,6 +3333,7 @@ class TestRESTClientImplAsync:
             components=[component_obj2],
             embed=embed_obj,
             embeds=[embed_obj2],
+            poll=poll_obj,
             tts=True,
             mentions_everyone=False,
             user_mentions=[9876],
@@ -3292,6 +3350,7 @@ class TestRESTClientImplAsync:
             components=[component_obj2],
             embed=embed_obj,
             embeds=[embed_obj2],
+            poll=poll_obj,
             tts=True,
             flags=120,
             mentions_everyone=False,
@@ -3539,10 +3598,8 @@ class TestRESTClientImplAsync:
         rest_client._request = mock.AsyncMock(return_value={"code": "Jx4cNGG"})
         rest_client._entity_factory.deserialize_invite = mock.Mock(return_value=return_invite)
 
-        assert await rest_client.fetch_invite(input_invite, with_counts=True, with_expiration=False) == return_invite
-        rest_client._request.assert_awaited_once_with(
-            expected_route, query={"with_counts": "true", "with_expiration": "false"}
-        )
+        assert await rest_client.fetch_invite(input_invite, with_counts=True) == return_invite
+        rest_client._request.assert_awaited_once_with(expected_route, query={"with_counts": "true"})
         rest_client._entity_factory.deserialize_invite.assert_called_once_with({"code": "Jx4cNGG"})
 
     async def test_delete_invite(self, rest_client):
@@ -3970,7 +4027,7 @@ class TestRESTClientImplAsync:
         emoji1 = StubModel(456)
         emoji2 = StubModel(789)
         expected_route = routes.GET_APPLICATION_EMOJIS.compile(application=123)
-        rest_client._request = mock.AsyncMock(return_value=[{"id": "456"}, {"id": "789"}])
+        rest_client._request = mock.AsyncMock(return_value={"items": [{"id": "456"}, {"id": "789"}]})
         rest_client._entity_factory.deserialize_known_custom_emoji = mock.Mock(side_effect=[emoji1, emoji2])
 
         assert await rest_client.fetch_application_emojis(StubModel(123)) == [emoji1, emoji2]
@@ -4732,6 +4789,7 @@ class TestRESTClientImplAsync:
         component_obj2 = object()
         embed_obj = object()
         embed_obj2 = object()
+        poll_obj = object()
         mock_body = data_binding.JSONObjectBuilder()
 
         expected_route = routes.POST_CHANNEL_THREADS.compile(channel=321123)
@@ -4755,6 +4813,7 @@ class TestRESTClientImplAsync:
             components=[component_obj2],
             embed=embed_obj,
             embeds=[embed_obj2],
+            poll=poll_obj,
             sticker=132543,
             stickers=[654234, 123321],
             tts=True,
@@ -4776,6 +4835,7 @@ class TestRESTClientImplAsync:
             components=[component_obj2],
             embed=embed_obj,
             embeds=[embed_obj2],
+            poll=poll_obj,
             sticker=132543,
             stickers=[654234, 123321],
             tts=True,
@@ -4808,6 +4868,7 @@ class TestRESTClientImplAsync:
         component_obj2 = object()
         embed_obj = object()
         embed_obj2 = object()
+        poll_obj = object()
         mock_body = {"mock": "message body"}
         mock_form = mock.Mock()
 
@@ -4825,6 +4886,7 @@ class TestRESTClientImplAsync:
             components=[component_obj2],
             embed=embed_obj,
             embeds=[embed_obj2],
+            poll=poll_obj,
             sticker=314542,
             stickers=[56234, 123312],
             tts=True,
@@ -4846,6 +4908,7 @@ class TestRESTClientImplAsync:
             components=[component_obj2],
             embed=embed_obj,
             embeds=[embed_obj2],
+            poll=poll_obj,
             sticker=314542,
             stickers=[56234, 123312],
             tts=True,
@@ -5672,7 +5735,6 @@ class TestRESTClientImplAsync:
             guild=StubModel(653452134),
             options=[mock_option],
             default_member_permissions=permissions.Permissions.ADMINISTRATOR,
-            dm_enabled=False,
             nsfw=True,
         )
 
@@ -5686,7 +5748,6 @@ class TestRESTClientImplAsync:
                 "description": "not ok anymore",
                 "options": [rest_client._entity_factory.serialize_command_option.return_value],
                 "default_member_permissions": 8,
-                "dm_permission": False,
                 "nsfw": True,
             },
         )
@@ -5739,7 +5800,6 @@ class TestRESTClientImplAsync:
             name_localizations={locales.Locale.TR: "hhh"},
             description_localizations={locales.Locale.TR: "jello"},
             default_member_permissions=permissions.Permissions.ADMINISTRATOR,
-            dm_enabled=False,
             nsfw=True,
         )
 
@@ -5757,7 +5817,6 @@ class TestRESTClientImplAsync:
             name_localizations={"tr": "hhh"},
             description_localizations={"tr": "jello"},
             default_member_permissions=permissions.Permissions.ADMINISTRATOR,
-            dm_enabled=False,
             nsfw=True,
         )
 
@@ -5772,7 +5831,6 @@ class TestRESTClientImplAsync:
             "okokok",
             guild=mock_guild,
             default_member_permissions=permissions.Permissions.ADMINISTRATOR,
-            dm_enabled=False,
             nsfw=True,
             name_localizations={locales.Locale.TR: "hhh"},
         )
@@ -5787,7 +5845,6 @@ class TestRESTClientImplAsync:
             name="okokok",
             guild=mock_guild,
             default_member_permissions=permissions.Permissions.ADMINISTRATOR,
-            dm_enabled=False,
             nsfw=True,
             name_localizations={"tr": "hhh"},
         )
@@ -5854,7 +5911,6 @@ class TestRESTClientImplAsync:
             description="cancelled",
             options=[mock_option],
             default_member_permissions=permissions.Permissions.BAN_MEMBERS,
-            dm_enabled=True,
         )
 
         assert result is rest_client._entity_factory.deserialize_command.return_value
@@ -5868,7 +5924,6 @@ class TestRESTClientImplAsync:
                 "description": "cancelled",
                 "options": [rest_client._entity_factory.serialize_command_option.return_value],
                 "default_member_permissions": 4,
-                "dm_permission": True,
             },
         )
         rest_client._entity_factory.serialize_command_option.assert_called_once_with(mock_option)
@@ -5974,6 +6029,7 @@ class TestRESTClientImplAsync:
         component_obj2 = object()
         embed_obj = object()
         embed_obj2 = object()
+        poll_obj = object()
         mock_form = mock.Mock()
         mock_body = data_binding.JSONObjectBuilder()
         mock_body.put("testing", "ensure_in_test")
@@ -5992,6 +6048,7 @@ class TestRESTClientImplAsync:
             components=[component_obj2],
             embed=embed_obj,
             embeds=[embed_obj2],
+            poll=poll_obj,
             tts=True,
             flags=120,
             mentions_everyone=False,
@@ -6007,6 +6064,7 @@ class TestRESTClientImplAsync:
             components=[component_obj2],
             embed=embed_obj,
             embeds=[embed_obj2],
+            poll=poll_obj,
             tts=True,
             flags=120,
             mentions_everyone=False,
@@ -6025,6 +6083,7 @@ class TestRESTClientImplAsync:
         component_obj2 = object()
         embed_obj = object()
         embed_obj2 = object()
+        poll_obj = object()
         mock_body = data_binding.JSONObjectBuilder()
         mock_body.put("testing", "ensure_in_test")
         expected_route = routes.POST_INTERACTION_RESPONSE.compile(interaction=432, token="some token")
@@ -6042,6 +6101,7 @@ class TestRESTClientImplAsync:
             components=[component_obj2],
             embed=embed_obj,
             embeds=[embed_obj2],
+            poll=poll_obj,
             tts=True,
             flags=120,
             mentions_everyone=False,
@@ -6057,6 +6117,7 @@ class TestRESTClientImplAsync:
             components=[component_obj2],
             embed=embed_obj,
             embeds=[embed_obj2],
+            poll=poll_obj,
             tts=True,
             flags=120,
             mentions_everyone=False,
@@ -6677,7 +6738,7 @@ class TestRESTClientImplAsync:
         rest_client._request.assert_awaited_once_with(expected_route, query={"after": "43587935", "limit": "6"})
 
     async def test_end_poll(self, rest_client: rest.RESTClientImpl):
-        expected_route = routes.POST_END_POLL.compile(
+        expected_route = routes.POST_EXPIRE_POLL.compile(
             channel=StubModel(45874392), message=StubModel(398475938475), answer=StubModel(4)
         )
         rest_client._request = mock.AsyncMock()

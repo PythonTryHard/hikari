@@ -25,6 +25,7 @@ import typing
 import mock
 import pytest
 
+from hikari import applications
 from hikari import channels
 from hikari import commands
 from hikari import components
@@ -33,6 +34,7 @@ from hikari import files
 from hikari import locales
 from hikari import messages
 from hikari import permissions
+from hikari import polls
 from hikari import snowflakes
 from hikari import undefined
 from hikari.api import special_endpoints as special_endpoints_api
@@ -84,7 +86,9 @@ class TestOwnGuildIterator:
         mock_request = mock.AsyncMock(
             side_effect=[[mock_payload_1, mock_payload_2, mock_payload_3], [mock_payload_4, mock_payload_5], []]
         )
-        iterator = special_endpoints.OwnGuildIterator(mock_entity_factory, mock_request, False, first_id="123321")
+        iterator = special_endpoints.OwnGuildIterator(
+            mock_entity_factory, mock_request, newest_first=False, first_id="123321"
+        )
 
         result = await iterator
 
@@ -131,7 +135,7 @@ class TestOwnGuildIterator:
             side_effect=[[mock_payload_3, mock_payload_4, mock_payload_5], [mock_payload_1, mock_payload_2], []]
         )
         iterator = special_endpoints.OwnGuildIterator(
-            mock_entity_factory, mock_request, True, first_id="55555555555555555"
+            mock_entity_factory, mock_request, newest_first=True, first_id="55555555555555555"
         )
 
         result = await iterator
@@ -161,7 +165,7 @@ class TestOwnGuildIterator:
         mock_entity_factory = mock.Mock()
         mock_request = mock.AsyncMock(return_value=[])
         iterator = special_endpoints.OwnGuildIterator(
-            mock_entity_factory, mock_request, newest_first, first_id="123321"
+            mock_entity_factory, mock_request, newest_first=newest_first, first_id="123321"
         )
 
         result = await iterator
@@ -1022,11 +1026,6 @@ class TestCommandBuilder:
 
         assert builder.default_member_permissions == permissions.Permissions.ADMINISTRATOR
 
-    def test_is_dm_enabled(self, stub_command):
-        builder = stub_command("oksksksk").set_is_dm_enabled(True)
-
-        assert builder.is_dm_enabled is True
-
     def test_is_nsfw_property(self, stub_command):
         builder = stub_command("oksksksk").set_is_nsfw(True)
 
@@ -1067,8 +1066,9 @@ class TestSlashCommandBuilder:
             .add_option(mock_option)
             .set_id(3412312)
             .set_default_member_permissions(permissions.Permissions.ADMINISTRATOR)
-            .set_is_dm_enabled(True)
             .set_is_nsfw(True)
+            .set_integration_types([applications.ApplicationIntegrationType.GUILD_INSTALL])
+            .set_context_types([applications.ApplicationContextType.GUILD])
         )
 
         result = builder.build(mock_entity_factory)
@@ -1078,13 +1078,14 @@ class TestSlashCommandBuilder:
             "name": "we are number",
             "description": "one",
             "type": 1,
-            "dm_permission": True,
             "nsfw": True,
             "default_member_permissions": 8,
             "options": [mock_entity_factory.serialize_command_option.return_value],
             "id": "3412312",
             "name_localizations": {locales.Locale.TR: "merhaba"},
             "description_localizations": {locales.Locale.TR: "bir"},
+            "contexts": [applications.ApplicationIntegrationType.GUILD_INSTALL.value],
+            "integration_types": [applications.ApplicationContextType.GUILD.value],
         }
 
     def test_build_without_optional_data(self):
@@ -1110,7 +1111,6 @@ class TestSlashCommandBuilder:
             .set_name_localizations({locales.Locale.TR: "sayı"})
             .set_description_localizations({locales.Locale.TR: "bir"})
             .set_default_member_permissions(permissions.Permissions.BAN_MEMBERS)
-            .set_is_dm_enabled(True)
             .set_is_nsfw(True)
         )
         mock_rest = mock.AsyncMock()
@@ -1127,7 +1127,6 @@ class TestSlashCommandBuilder:
             name_localizations={locales.Locale.TR: "sayı"},
             description_localizations={locales.Locale.TR: "bir"},
             default_member_permissions=permissions.Permissions.BAN_MEMBERS,
-            dm_enabled=True,
             nsfw=True,
         )
 
@@ -1136,7 +1135,6 @@ class TestSlashCommandBuilder:
         builder = (
             special_endpoints.SlashCommandBuilder("we are number", "one")
             .set_default_member_permissions(permissions.Permissions.BAN_MEMBERS)
-            .set_is_dm_enabled(True)
             .set_is_nsfw(True)
         )
         mock_rest = mock.AsyncMock()
@@ -1156,7 +1154,6 @@ class TestSlashCommandBuilder:
             name_localizations={locales.Locale.TR: "sayı"},
             description_localizations={locales.Locale.TR: "bir"},
             default_member_permissions=permissions.Permissions.BAN_MEMBERS,
-            dm_enabled=True,
             nsfw=True,
         )
 
@@ -1168,8 +1165,9 @@ class TestContextMenuBuilder:
             .set_id(3412312)
             .set_name_localizations({locales.Locale.TR: "merhaba"})
             .set_default_member_permissions(permissions.Permissions.ADMINISTRATOR)
-            .set_is_dm_enabled(True)
             .set_is_nsfw(True)
+            .set_integration_types([applications.ApplicationIntegrationType.GUILD_INSTALL])
+            .set_context_types([applications.ApplicationContextType.GUILD])
         )
 
         result = builder.build(mock.Mock())
@@ -1177,11 +1175,12 @@ class TestContextMenuBuilder:
         assert result == {
             "name": "we are number",
             "type": 2,
-            "dm_permission": True,
             "nsfw": True,
             "default_member_permissions": 8,
             "id": "3412312",
             "name_localizations": {locales.Locale.TR: "merhaba"},
+            "contexts": [applications.ApplicationIntegrationType.GUILD_INSTALL.value],
+            "integration_types": [applications.ApplicationContextType.GUILD.value],
         }
 
     def test_build_without_optional_data(self):
@@ -1197,7 +1196,6 @@ class TestContextMenuBuilder:
             special_endpoints.ContextMenuCommandBuilder(commands.CommandType.USER, "we are number")
             .set_default_member_permissions(permissions.Permissions.BAN_MEMBERS)
             .set_name_localizations({"meow": "nyan"})
-            .set_is_dm_enabled(True)
             .set_is_nsfw(True)
         )
         mock_rest = mock.AsyncMock()
@@ -1212,7 +1210,6 @@ class TestContextMenuBuilder:
             guild=undefined.UNDEFINED,
             default_member_permissions=permissions.Permissions.BAN_MEMBERS,
             name_localizations={"meow": "nyan"},
-            dm_enabled=True,
             nsfw=True,
         )
 
@@ -1222,7 +1219,6 @@ class TestContextMenuBuilder:
             special_endpoints.ContextMenuCommandBuilder(commands.CommandType.USER, "we are number")
             .set_default_member_permissions(permissions.Permissions.BAN_MEMBERS)
             .set_name_localizations({"en-ghibli": "meow"})
-            .set_is_dm_enabled(True)
             .set_is_nsfw(True)
         )
         mock_rest = mock.AsyncMock()
@@ -1237,7 +1233,6 @@ class TestContextMenuBuilder:
             guild=765234123,
             default_member_permissions=permissions.Permissions.BAN_MEMBERS,
             name_localizations={"en-ghibli": "meow"},
-            dm_enabled=True,
             nsfw=True,
         )
 
@@ -1870,3 +1865,60 @@ class TestModalActionRow:
         }
         mock_component_1.build.assert_called_once_with()
         mock_component_2.build.assert_called_once_with()
+
+
+class TestPollBuilder:
+    def test_add_answer(self):
+        poll_builder = special_endpoints.PollBuilder(question_text="A cool question", allow_multiselect=False)
+
+        assert poll_builder.answers == []
+
+        poll_builder.add_answer(text="Beanos", emoji=emojis.UnicodeEmoji("👌"))
+
+        assert len(poll_builder.answers) == 1
+
+        assert poll_builder.answers[0].text == "Beanos"
+        assert poll_builder.answers[0].emoji == emojis.UnicodeEmoji("👌")
+
+    def test_build(self):
+        poll_builder = special_endpoints.PollBuilder(
+            question_text="question_text",
+            answers=[
+                special_endpoints.PollAnswerBuilder(
+                    text="answer_1_text",
+                    emoji=emojis.CustomEmoji(id=snowflakes.Snowflake(456), name="question_emoji", is_animated=False),
+                ),
+                special_endpoints.PollAnswerBuilder(text="answer_2_text"),
+                special_endpoints.PollAnswerBuilder(emoji=emojis.UnicodeEmoji("👀")),
+            ],
+            duration=9,
+            allow_multiselect=True,
+            layout_type=polls.PollLayoutType.DEFAULT,
+        )
+
+        assert poll_builder.build() == {
+            "question": {"text": "question_text"},
+            "answers": [
+                {"poll_media": {"text": "answer_1_text", "emoji": {"id": "456"}}},
+                {"poll_media": {"text": "answer_2_text"}},
+                {"poll_media": {"emoji": {"name": "👀"}}},
+            ],
+            "duration": 9,
+            "allow_multiselect": True,
+            "layout_type": polls.PollLayoutType.DEFAULT,
+        }
+
+    def test_build_without_optional_fields(self):
+        poll_builder = special_endpoints.PollBuilder(question_text="question_text", allow_multiselect=True)
+
+        assert poll_builder.build() == {"question": {"text": "question_text"}, "answers": [], "allow_multiselect": True}
+
+
+class TestPollAnswerBuilder:
+    def test_build(self):
+        poll_answer = special_endpoints.PollAnswerBuilder(
+            text="answer_1_text",
+            emoji=emojis.CustomEmoji(id=snowflakes.Snowflake(456), name="question_emoji", is_animated=False),
+        )
+
+        assert poll_answer.build() == {"poll_media": {"text": "answer_1_text", "emoji": {"id": "456"}}}

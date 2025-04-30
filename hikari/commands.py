@@ -1,4 +1,3 @@
-# cython: language_level=3
 # Copyright (c) 2020 Nekokatt
 # Copyright (c) 2021-present davfsa
 #
@@ -24,16 +23,16 @@
 from __future__ import annotations
 
 __all__: typing.Sequence[str] = (
-    "PartialCommand",
-    "ContextMenuCommand",
-    "SlashCommand",
     "CommandChoice",
     "CommandOption",
     "CommandPermission",
     "CommandPermissionType",
     "CommandType",
+    "ContextMenuCommand",
     "GuildCommandPermissions",
     "OptionType",
+    "PartialCommand",
+    "SlashCommand",
 )
 
 import typing
@@ -48,6 +47,7 @@ from hikari.internal import attrs_extensions
 from hikari.internal import enums
 
 if typing.TYPE_CHECKING:
+    from hikari import applications
     from hikari import channels
     from hikari import guilds
     from hikari import locales
@@ -245,9 +245,6 @@ class PartialCommand(snowflakes.Unique):
     This excludes administrators of the guild and overwrites.
     """
 
-    is_dm_enabled: bool = attrs.field(eq=False, hash=False, repr=True)
-    """Whether this command is enabled in DMs with the bot."""
-
     is_nsfw: bool = attrs.field(eq=False, hash=False, repr=True)
     """Whether this command is age-restricted."""
 
@@ -264,6 +261,14 @@ class PartialCommand(snowflakes.Unique):
         eq=False, hash=False, repr=False
     )
     """A mapping of name localizations for this command."""
+
+    integration_types: typing.Sequence[applications.ApplicationIntegrationType] = attrs.field(
+        eq=False, hash=False, repr=False
+    )
+    """The integration types allowed for this command."""
+
+    context_types: typing.Sequence[applications.ApplicationContextType] = attrs.field(eq=False, hash=False, repr=False)
+    """The context types allowed for this command."""
 
     async def fetch_self(self) -> PartialCommand:
         """Fetch an up-to-date version of this command object.
@@ -287,10 +292,9 @@ class PartialCommand(snowflakes.Unique):
         hikari.errors.InternalServerError
             If an internal error occurs on Discord while handling the request.
         """
-        command = await self.app.rest.fetch_application_command(
+        return await self.app.rest.fetch_application_command(
             self.application_id, self.id, undefined.UNDEFINED if self.guild_id is None else self.guild_id
         )
-        return command
 
     async def edit(
         self,
@@ -334,7 +338,7 @@ class PartialCommand(snowflakes.Unique):
         hikari.errors.InternalServerError
             If an internal error occurs on Discord while handling the request.
         """
-        command = await self.app.rest.edit_application_command(
+        return await self.app.rest.edit_application_command(
             self.application_id,
             self.id,
             undefined.UNDEFINED if self.guild_id is None else self.guild_id,
@@ -342,7 +346,6 @@ class PartialCommand(snowflakes.Unique):
             description=description,
             options=options,
         )
-        return command
 
     async def delete(self) -> None:
         """Delete this command.

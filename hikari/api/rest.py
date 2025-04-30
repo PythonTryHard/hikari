@@ -1,4 +1,3 @@
-# cython: language_level=3
 # Copyright (c) 2020 Nekokatt
 # Copyright (c) 2021-present davfsa
 #
@@ -29,6 +28,7 @@ import abc
 import datetime
 import typing
 
+from hikari import permissions as permissions_
 from hikari import scheduled_events
 from hikari import traits
 from hikari import undefined
@@ -48,8 +48,6 @@ if typing.TYPE_CHECKING:
     from hikari import locales
     from hikari import messages as messages_
     from hikari import monetization
-    from hikari import permissions as permissions_
-    from hikari import polls
     from hikari import sessions
     from hikari import snowflakes
     from hikari import stage_instances
@@ -186,7 +184,7 @@ class RESTClient(traits.NetworkSettingsAware, abc.ABC):
         """
 
     @abc.abstractmethod
-    async def edit_channel(
+    async def edit_channel(  # noqa: PLR0913 - Too many arguments
         self,
         channel: snowflakes.SnowflakeishOr[channels_.GuildChannel],
         /,
@@ -373,7 +371,9 @@ class RESTClient(traits.NetworkSettingsAware, abc.ABC):
 
     @abc.abstractmethod
     async def delete_channel(
-        self, channel: snowflakes.SnowflakeishOr[channels_.PartialChannel]
+        self,
+        channel: snowflakes.SnowflakeishOr[channels_.PartialChannel],
+        reason: undefined.UndefinedOr[str] = undefined.UNDEFINED,
     ) -> channels_.PartialChannel:
         """Delete a channel in a guild, or close a DM.
 
@@ -386,6 +386,9 @@ class RESTClient(traits.NetworkSettingsAware, abc.ABC):
         channel
             The channel to delete. This may be the object or the ID of an
             existing channel.
+        reason
+            If provided, the reason that will be recorded in the audit logs.
+            Maximum of 512 characters.
 
         Returns
         -------
@@ -571,7 +574,8 @@ class RESTClient(traits.NetworkSettingsAware, abc.ABC):
         deny: undefined.UndefinedOr[permissions_.Permissions] = undefined.UNDEFINED,
         reason: undefined.UndefinedOr[str] = undefined.UNDEFINED,
     ) -> None:
-        """Edit permissions for a target entity."""
+        # Edit permissions for a target entity
+        ...
 
     @typing.overload
     @abc.abstractmethod
@@ -585,7 +589,8 @@ class RESTClient(traits.NetworkSettingsAware, abc.ABC):
         deny: undefined.UndefinedOr[permissions_.Permissions] = undefined.UNDEFINED,
         reason: undefined.UndefinedOr[str] = undefined.UNDEFINED,
     ) -> None:
-        """Edit permissions for a given entity ID and type."""
+        # Edit permissions for a given entity ID and type
+        ...
 
     @abc.abstractmethod
     async def edit_permission_overwrite(
@@ -1044,7 +1049,7 @@ class RESTClient(traits.NetworkSettingsAware, abc.ABC):
         components: undefined.UndefinedOr[typing.Sequence[special_endpoints.ComponentBuilder]] = undefined.UNDEFINED,
         embed: undefined.UndefinedOr[embeds_.Embed] = undefined.UNDEFINED,
         embeds: undefined.UndefinedOr[typing.Sequence[embeds_.Embed]] = undefined.UNDEFINED,
-        poll: undefined.UndefinedOr[polls.PollBuilder] = undefined.UNDEFINED,
+        poll: undefined.UndefinedOr[special_endpoints.PollBuilder] = undefined.UNDEFINED,
         sticker: undefined.UndefinedOr[snowflakes.SnowflakeishOr[stickers_.PartialSticker]] = undefined.UNDEFINED,
         stickers: undefined.UndefinedOr[
             snowflakes.SnowflakeishSequence[stickers_.PartialSticker]
@@ -1432,6 +1437,8 @@ class RESTClient(traits.NetworkSettingsAware, abc.ABC):
         self,
         channel: snowflakes.SnowflakeishOr[channels_.TextableChannel],
         message: snowflakes.SnowflakeishOr[messages_.PartialMessage],
+        *,
+        reason: undefined.UndefinedOr[str] = undefined.UNDEFINED,
     ) -> None:
         """Delete a given message in a given channel.
 
@@ -1443,6 +1450,9 @@ class RESTClient(traits.NetworkSettingsAware, abc.ABC):
         message
             The message to delete. This may be the object or the ID of
             an existing message.
+        reason
+            If provided, the reason that will be recorded in the audit logs.
+            Maximum of 512 characters.
 
         Raises
         ------
@@ -1471,6 +1481,7 @@ class RESTClient(traits.NetworkSettingsAware, abc.ABC):
         ],
         /,
         *other_messages: snowflakes.SnowflakeishOr[messages_.PartialMessage],
+        reason: undefined.UndefinedOr[str] = undefined.UNDEFINED,
     ) -> None:
         """Bulk-delete messages from the channel.
 
@@ -1505,6 +1516,9 @@ class RESTClient(traits.NetworkSettingsAware, abc.ABC):
             (sync or async) of the objects and/or IDs of existing messages to delete.
         *other_messages
             The objects and/or IDs of other existing messages to delete.
+        reason
+            If provided, the reason that will be recorded in the audit logs.
+            Maximum of 512 characters.
 
         Raises
         ------
@@ -2037,6 +2051,7 @@ class RESTClient(traits.NetworkSettingsAware, abc.ABC):
         components: undefined.UndefinedOr[typing.Sequence[special_endpoints.ComponentBuilder]] = undefined.UNDEFINED,
         embed: undefined.UndefinedOr[embeds_.Embed] = undefined.UNDEFINED,
         embeds: undefined.UndefinedOr[typing.Sequence[embeds_.Embed]] = undefined.UNDEFINED,
+        poll: undefined.UndefinedOr[special_endpoints.PollBuilder] = undefined.UNDEFINED,
         tts: undefined.UndefinedOr[bool] = undefined.UNDEFINED,
         mentions_everyone: undefined.UndefinedOr[bool] = undefined.UNDEFINED,
         user_mentions: undefined.UndefinedOr[
@@ -2133,6 +2148,8 @@ class RESTClient(traits.NetworkSettingsAware, abc.ABC):
             If provided, the message embed.
         embeds
             If provided, the message embeds.
+        poll
+            If provided, the message poll.
         tts
             If provided, whether the message will be read out by a screen
             reader using Discord's TTS (text-to-speech) system.
@@ -2477,7 +2494,7 @@ class RESTClient(traits.NetworkSettingsAware, abc.ABC):
 
     @abc.abstractmethod
     async def fetch_invite(
-        self, invite: typing.Union[invites.InviteCode, str], with_counts: bool = True, with_expiration: bool = True
+        self, invite: typing.Union[invites.InviteCode, str], *, with_counts: bool = True
     ) -> invites.Invite:
         """Fetch an existing invite.
 
@@ -2488,8 +2505,6 @@ class RESTClient(traits.NetworkSettingsAware, abc.ABC):
             the code of an existing invite.
         with_counts
             Whether the invite should contain the approximate member counts.
-        with_expiration
-            Whether the invite should contain the expiration date.
 
         Returns
         -------
@@ -4764,7 +4779,7 @@ class RESTClient(traits.NetworkSettingsAware, abc.ABC):
         """
 
     @abc.abstractmethod
-    async def create_forum_post(
+    async def create_forum_post(  # noqa: PLR0913
         self,
         channel: snowflakes.SnowflakeishOr[channels_.PermissibleGuildChannel],
         name: str,
@@ -4778,6 +4793,7 @@ class RESTClient(traits.NetworkSettingsAware, abc.ABC):
         components: undefined.UndefinedOr[typing.Sequence[special_endpoints.ComponentBuilder]] = undefined.UNDEFINED,
         embed: undefined.UndefinedOr[embeds_.Embed] = undefined.UNDEFINED,
         embeds: undefined.UndefinedOr[typing.Sequence[embeds_.Embed]] = undefined.UNDEFINED,
+        poll: undefined.UndefinedOr[special_endpoints.PollBuilder] = undefined.UNDEFINED,
         sticker: undefined.UndefinedOr[snowflakes.SnowflakeishOr[stickers_.PartialSticker]] = undefined.UNDEFINED,
         stickers: undefined.UndefinedOr[
             snowflakes.SnowflakeishSequence[stickers_.PartialSticker]
@@ -4860,6 +4876,8 @@ class RESTClient(traits.NetworkSettingsAware, abc.ABC):
             If provided, the message embed.
         embeds
             If provided, the message embeds.
+        poll
+            If provided, the message poll.
         sticker
             If provided, the object or ID of a sticker to send on the message.
 
@@ -5997,7 +6015,7 @@ class RESTClient(traits.NetworkSettingsAware, abc.ABC):
         guild: snowflakes.SnowflakeishOr[guilds.PartialGuild],
         *,
         name: undefined.UndefinedOr[str] = undefined.UNDEFINED,
-        permissions: undefined.UndefinedOr[permissions_.Permissions] = undefined.UNDEFINED,
+        permissions: undefined.UndefinedOr[permissions_.Permissions] = permissions_.Permissions.NONE,
         color: undefined.UndefinedOr[colors.Colorish] = undefined.UNDEFINED,
         colour: undefined.UndefinedOr[colors.Colorish] = undefined.UNDEFINED,
         hoist: undefined.UndefinedOr[bool] = undefined.UNDEFINED,
@@ -6017,7 +6035,7 @@ class RESTClient(traits.NetworkSettingsAware, abc.ABC):
             If provided, the name for the role.
         permissions
             The permissions to give the role. This will default to setting
-            NO roles if left to the default value. This is in contrast to
+            NO permissions if left as the default value. This is in contrast to
             default behaviour on Discord where some random permissions will
             be set by default.
         color
@@ -6965,7 +6983,6 @@ class RESTClient(traits.NetworkSettingsAware, abc.ABC):
         default_member_permissions: typing.Union[
             undefined.UndefinedType, int, permissions_.Permissions
         ] = undefined.UNDEFINED,
-        dm_enabled: undefined.UndefinedOr[bool] = undefined.UNDEFINED,
         nsfw: undefined.UndefinedOr[bool] = undefined.UNDEFINED,
     ) -> commands.SlashCommand:
         r"""Create an application slash command.
@@ -6996,10 +7013,6 @@ class RESTClient(traits.NetworkSettingsAware, abc.ABC):
 
             If `0`, then it will be available for all members. Note that this doesn't affect
             administrators of the guild and overwrites.
-        dm_enabled
-            Whether this command is enabled in DMs with the bot.
-
-            This can only be applied to non-guild commands.
         nsfw
             Whether this command should be age-restricted.
 
@@ -7039,7 +7052,6 @@ class RESTClient(traits.NetworkSettingsAware, abc.ABC):
         default_member_permissions: typing.Union[
             undefined.UndefinedType, int, permissions_.Permissions
         ] = undefined.UNDEFINED,
-        dm_enabled: undefined.UndefinedOr[bool] = undefined.UNDEFINED,
         nsfw: undefined.UndefinedOr[bool] = undefined.UNDEFINED,
     ) -> commands.ContextMenuCommand:
         r"""Create an application context menu command.
@@ -7065,10 +7077,6 @@ class RESTClient(traits.NetworkSettingsAware, abc.ABC):
 
             If `0`, then it will be available for all members. Note that this doesn't affect
             administrators of the guild and overwrites.
-        dm_enabled
-            Whether this command is enabled in DMs with the bot.
-
-            This can only be applied to non-guild commands.
         nsfw
             Whether this command should be age-restricted.
 
@@ -7154,7 +7162,6 @@ class RESTClient(traits.NetworkSettingsAware, abc.ABC):
         default_member_permissions: typing.Union[
             undefined.UndefinedType, int, permissions_.Permissions
         ] = undefined.UNDEFINED,
-        dm_enabled: undefined.UndefinedOr[bool] = undefined.UNDEFINED,
     ) -> commands.PartialCommand:
         """Edit a registered application command.
 
@@ -7182,10 +7189,6 @@ class RESTClient(traits.NetworkSettingsAware, abc.ABC):
 
             If `0`, then it will be available for all members. Note that this doesn't affect
             administrators of the guild and overwrites.
-        dm_enabled
-            Whether this command is enabled in DMs with the bot.
-
-            This can only be applied to non-guild commands.
 
         Returns
         -------
@@ -7498,6 +7501,7 @@ class RESTClient(traits.NetworkSettingsAware, abc.ABC):
         ] = undefined.UNDEFINED,
         embed: undefined.UndefinedNoneOr[embeds_.Embed] = undefined.UNDEFINED,
         embeds: undefined.UndefinedNoneOr[typing.Sequence[embeds_.Embed]] = undefined.UNDEFINED,
+        poll: undefined.UndefinedOr[special_endpoints.PollBuilder] = undefined.UNDEFINED,
         mentions_everyone: undefined.UndefinedOr[bool] = undefined.UNDEFINED,
         user_mentions: undefined.UndefinedOr[
             typing.Union[snowflakes.SnowflakeishSequence[users.PartialUser], bool]
@@ -7547,6 +7551,8 @@ class RESTClient(traits.NetworkSettingsAware, abc.ABC):
             If provided, the message embed.
         embeds
             If provided, the message embeds.
+        poll
+            If provided, the poll to add to the message.
         flags
             If provided, the message flags this response should have.
 
@@ -7696,6 +7702,8 @@ class RESTClient(traits.NetworkSettingsAware, abc.ABC):
             If this is [`None`][] then any present embeds are removed.
             Otherwise, the new embeds that were provided will be used as the
             replacement.
+        poll
+            If provided, the poll to set on the message.
         mentions_everyone
             If provided, whether the message should parse @everyone/@here
             mentions.

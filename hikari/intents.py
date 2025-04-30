@@ -1,4 +1,3 @@
-# cython: language_level=3
 # Copyright (c) 2020 Nekokatt
 # Copyright (c) 2021-present davfsa
 #
@@ -42,9 +41,9 @@ class Intents(enums.Flag):
 
     !!! note
         Discord now places limits on certain events you can receive without
-        whitelisting your bot first. On the `Bot` tab in the [developer's portal]
-        (https://discord.com/developers/applications/) for your bot, you should
-        now have the option to enable functionality for receiving these events.
+        whitelisting your bot first. On the `Bot` tab in the
+        [developer's portal](https://discord.com/developers/applications/) for your bot,
+        you should now have the option to enable functionality for receiving these events.
 
         If you attempt to request an intent type that you have not whitelisted
         your bot for, you will be disconnected on startup with a `4014` closure
@@ -337,15 +336,15 @@ class Intents(enums.Flag):
     GUILD_MESSAGE_POLLS = 1 << 24
     """Subscribes to the events listed below.
 
-    * `MESSAGE_POLL_VOTE_ADD`
-    * `MESSAGE_POLL_VOTE_REMOVE`
+    * `MESSAGE_POLL_VOTE_ADD` (in guilds only)
+    * `MESSAGE_POLL_VOTE_REMOVE` (in guilds only)
     """
 
     DIRECT_MESSAGE_POLLS = 1 << 25
     """Subscribes to the events listed below.
 
-    * `MESSAGE_POLL_VOTE_ADD`
-    * `MESSAGE_POLL_VOTE_REMOVE`
+    * `MESSAGE_POLL_VOTE_ADD` (in direct message channels (non-guild bound) only)
+    * `MESSAGE_POLL_VOTE_REMOVE` (in direct message channels (non-guild bound) only)
     """
 
     # Annoyingly, enums hide classmethods and staticmethods from __dir__ in

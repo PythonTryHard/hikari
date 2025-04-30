@@ -1,4 +1,3 @@
-# cython: language_level=3
 # Copyright (c) 2020 Nekokatt
 # Copyright (c) 2021-present davfsa
 #
@@ -26,32 +25,35 @@ from __future__ import annotations
 __all__: typing.Sequence[str] = (
     "AutocompleteChoiceBuilder",
     "ButtonBuilder",
+    "ChannelSelectMenuBuilder",
     "CommandBuilder",
-    "SlashCommandBuilder",
-    "ContextMenuCommandBuilder",
     "ComponentBuilder",
-    "TypingIndicator",
+    "ContextMenuCommandBuilder",
     "GuildBuilder",
     "InteractionAutocompleteBuilder",
     "InteractionDeferredBuilder",
-    "InteractionResponseBuilder",
     "InteractionMessageBuilder",
+    "InteractionModalBuilder",
+    "InteractionResponseBuilder",
     "InteractiveButtonBuilder",
     "LinkButtonBuilder",
-    "SelectMenuBuilder",
-    "TextSelectMenuBuilder",
-    "ChannelSelectMenuBuilder",
-    "SelectOptionBuilder",
-    "TextInputBuilder",
-    "InteractionModalBuilder",
     "MessageActionRowBuilder",
     "ModalActionRowBuilder",
+    "PollAnswerBuilder",
+    "PollBuilder",
+    "SelectMenuBuilder",
+    "SelectOptionBuilder",
+    "SlashCommandBuilder",
+    "TextInputBuilder",
+    "TextSelectMenuBuilder",
+    "TypingIndicator",
 )
 
 import abc
 import typing
 
 from hikari import components as components_
+from hikari import polls
 from hikari import undefined
 
 if typing.TYPE_CHECKING:
@@ -59,6 +61,7 @@ if typing.TYPE_CHECKING:
 
     from typing_extensions import Self
 
+    from hikari import applications
     from hikari import channels
     from hikari import colors
     from hikari import commands
@@ -103,7 +106,10 @@ class TypingIndicator(abc.ABC):
 
     @abc.abstractmethod
     async def __aexit__(
-        self, exception_type: type[BaseException], exception: BaseException, exception_traceback: types.TracebackType
+        self,
+        exception_type: typing.Optional[type[BaseException]],
+        exception: typing.Optional[BaseException],
+        exception_traceback: typing.Optional[types.TracebackType],
     ) -> None: ...
 
 
@@ -595,7 +601,7 @@ class AutocompleteChoiceBuilder(abc.ABC):
         """
 
     @abc.abstractmethod
-    def set_value(self, value: typing.Union[int, float, str], /) -> Self:
+    def set_value(self, value: typing.Union[float, str], /) -> Self:
         """Set this choice's value.
 
         Returns
@@ -1010,14 +1016,6 @@ class CommandBuilder(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def is_dm_enabled(self) -> undefined.UndefinedOr[bool]:
-        """Whether this command is enabled in DMs with the bot.
-
-        Only applicable to globally-scoped commands.
-        """
-
-    @property
-    @abc.abstractmethod
     def is_nsfw(self) -> undefined.UndefinedOr[bool]:
         """Whether this command age-restricted."""
 
@@ -1025,6 +1023,16 @@ class CommandBuilder(abc.ABC):
     @abc.abstractmethod
     def name_localizations(self) -> typing.Mapping[typing.Union[locales.Locale, str], str]:
         """Name localizations set for this command."""
+
+    @property
+    @abc.abstractmethod
+    def integration_types(self) -> undefined.UndefinedOr[typing.Sequence[applications.ApplicationIntegrationType]]:
+        """The integration types allowed for this command."""
+
+    @property
+    @abc.abstractmethod
+    def context_types(self) -> undefined.UndefinedOr[typing.Sequence[applications.ApplicationContextType]]:
+        """The context types allowed for this command."""
 
     @abc.abstractmethod
     def set_name(self, name: str, /) -> Self:
@@ -1077,21 +1085,6 @@ class CommandBuilder(abc.ABC):
         """
 
     @abc.abstractmethod
-    def set_is_dm_enabled(self, state: undefined.UndefinedOr[bool], /) -> Self:
-        """Set whether this command will be enabled in DMs with the bot.
-
-        Parameters
-        ----------
-        state
-            Whether this command is enabled in DMs with the bot.
-
-        Returns
-        -------
-        CommandBuilder
-            Object of this command builder to allow for chained calls.
-        """
-
-    @abc.abstractmethod
     def set_is_nsfw(self, state: undefined.UndefinedOr[bool], /) -> Self:
         """Set whether this command will be age-restricted.
 
@@ -1116,6 +1109,40 @@ class CommandBuilder(abc.ABC):
         ----------
         name_localizations
             The name localizations to set for this command.
+
+        Returns
+        -------
+        CommandBuilder
+            Object of this command builder.
+        """
+
+    @abc.abstractmethod
+    def set_integration_types(
+        self, integration_types: undefined.UndefinedOr[typing.Sequence[applications.ApplicationIntegrationType]]
+    ) -> Self:
+        """Set the integration types for this command.
+
+        Parameters
+        ----------
+        integration_types
+            The integration types to set for this command.
+
+        Returns
+        -------
+        CommandBuilder
+            Object of this command builder.
+        """
+
+    @abc.abstractmethod
+    def set_context_types(
+        self, context_types: undefined.UndefinedOr[typing.Sequence[applications.ApplicationContextType]]
+    ) -> Self:
+        """Set the context types for this command.
+
+        Parameters
+        ----------
+        context_types
+            The context types to set for this command.
 
         Returns
         -------
@@ -1403,7 +1430,7 @@ class ButtonBuilder(ComponentBuilder, abc.ABC):
         """
 
     @abc.abstractmethod
-    def set_is_disabled(self, state: bool, /) -> Self:
+    def set_is_disabled(self, state: bool, /) -> Self:  # noqa: FBT001 - Boolean-typed positional argument
         """Set whether this button should be disabled.
 
         Parameters
@@ -1552,7 +1579,7 @@ class SelectOptionBuilder(abc.ABC):
         """
 
     @abc.abstractmethod
-    def set_is_default(self, state: bool, /) -> Self:
+    def set_is_default(self, state: bool, /) -> Self:  # noqa: FBT001 - Boolean-typed positional argument
         """Set whether this option should be selected by default.
 
         Parameters
@@ -1633,7 +1660,7 @@ class SelectMenuBuilder(ComponentBuilder, abc.ABC):
         """
 
     @abc.abstractmethod
-    def set_is_disabled(self, state: bool, /) -> Self:
+    def set_is_disabled(self, state: bool, /) -> Self:  # noqa: FBT001 - Boolean-typed positional argument
         """Set whether this option is disabled.
 
         Parameters
@@ -1909,7 +1936,7 @@ class TextInputBuilder(ComponentBuilder, abc.ABC):
         """
 
     @abc.abstractmethod
-    def set_required(self, required: bool, /) -> Self:
+    def set_required(self, required: bool, /) -> Self:  # noqa: FBT001 - Boolean-typed positional argument
         """Set whether this text input is required to be filled-in.
 
         Parameters
@@ -2270,4 +2297,93 @@ class ModalActionRowBuilder(ComponentBuilder, abc.ABC):
         -------
         ModalActionRowBuilder
             The modal action row builder to enable call chaining.
+        """
+
+
+class PollBuilder(abc.ABC):
+    """Builder class for polls."""
+
+    __slots__: typing.Sequence[str] = ()
+
+    @property
+    @abc.abstractmethod
+    def question_text(self) -> str:
+        """The question text for the poll."""
+
+    @property
+    @abc.abstractmethod
+    def answers(self) -> typing.Sequence[PollAnswerBuilder]:
+        """The answers for the poll."""
+
+    @property
+    @abc.abstractmethod
+    def duration(self) -> undefined.UndefinedOr[int]:
+        """The duration of the poll."""
+
+    @property
+    @abc.abstractmethod
+    def allow_multiselect(self) -> bool:
+        """Whether a user can select multiple answers."""
+
+    @property
+    @abc.abstractmethod
+    def layout_type(self) -> undefined.UndefinedOr[polls.PollLayoutType]:
+        """The layout type for the poll."""
+
+    @abc.abstractmethod
+    def add_answer(
+        self,
+        *,
+        text: undefined.UndefinedOr[str] = undefined.UNDEFINED,
+        emoji: undefined.UndefinedOr[emojis.Emoji] = undefined.UNDEFINED,
+    ) -> Self:
+        """Add a answer to the poll.
+
+        Parameters
+        ----------
+        text
+            The text for the answer.
+        emoji
+            The emoji for the answer.
+
+        Returns
+        -------
+        PollAnswerBuilder
+            The builder object to enable chained calls.
+        """
+
+    @abc.abstractmethod
+    def build(self) -> typing.MutableMapping[str, typing.Any]:
+        """Build a JSON object from this builder.
+
+        Returns
+        -------
+        typing.MutableMapping[str, typing.Any]
+            The built json object representation of this builder.
+        """
+
+
+class PollAnswerBuilder(abc.ABC):
+    """Builder class for poll answers."""
+
+    __slots__: typing.Sequence[str] = ()
+
+    @property
+    @abc.abstractmethod
+    def text(self) -> undefined.UndefinedOr[str]:
+        """The text for the media object."""
+
+    @property
+    @abc.abstractmethod
+    def emoji(self) -> undefined.UndefinedOr[emojis.Emoji]:
+        """The emoji for the media object."""
+
+    @abc.abstractmethod
+    def build(self) -> typing.MutableMapping[str, typing.Any]:
+        """Build a JSON object from this builder.
+
+        Returns
+        -------
+        typing.MutableMapping[str, typing.Any]
+            The built json object representation of this builder.
         """

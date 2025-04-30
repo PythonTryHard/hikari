@@ -1,4 +1,3 @@
-# cython: language_level=3
 # Copyright (c) 2020 Nekokatt
 # Copyright (c) 2021-present davfsa
 #
@@ -50,7 +49,9 @@ from hikari._about import __maintainer__
 from hikari._about import __url__
 from hikari._about import __version__
 from hikari.applications import Application
+from hikari.applications import ApplicationContextType
 from hikari.applications import ApplicationFlags
+from hikari.applications import ApplicationIntegrationType
 from hikari.applications import ApplicationRoleConnectionMetadataRecord
 from hikari.applications import ApplicationRoleConnectionMetadataRecordType
 from hikari.applications import AuthorizationApplication

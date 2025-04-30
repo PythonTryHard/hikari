@@ -1,4 +1,3 @@
-# cython: language_level=3
 # Copyright (c) 2020 Nekokatt
 # Copyright (c) 2021-present davfsa
 #
@@ -39,7 +38,6 @@ __all__: typing.Sequence[str] = (
     "MessagePinEntryInfo",
 )
 
-import abc
 import typing
 
 import attrs
@@ -338,16 +336,23 @@ class AuditLogEventType(int, enums.Enum):
     GUILD_SCHEDULED_EVENT_CREATE = 100
     GUILD_SCHEDULED_EVENT_UPDATE = 101
     GUILD_SCHEDULED_EVENT_DELETE = 102
-    APPLICATION_COMMAND_PERMISSION_UPDATE = 121
     THREAD_CREATE = 110
     THREAD_UPDATE = 111
     THREAD_DELETE = 112
+    APPLICATION_COMMAND_PERMISSION_UPDATE = 121
     CREATOR_MONETIZATION_REQUEST_CREATED = 150
     CREATOR_MONETIZATION_TERMS_ACCEPTED = 151
+    ONBOARDING_PROMPT_CREATE = 163
+    ONBOARDING_PROMPT_UPDATE = 164
+    ONBOARDING_PROMPT_DELETE = 165
+    ONBOARDING_CREATE = 166
+    ONBOARDING_UPDATE = 167
+    HOME_SETTINGS_CREATE = 190
+    HOME_SETTINGS_UPDATE = 191
 
 
 @attrs.define(kw_only=True, weakref_slot=False)
-class BaseAuditLogEntryInfo(abc.ABC):
+class BaseAuditLogEntryInfo:
     """A base object that all audit log entry info objects will inherit from."""
 
     app: traits.RESTAware = attrs.field(repr=False, eq=False, metadata={attrs_extensions.SKIP_DEEP_COPY: True})

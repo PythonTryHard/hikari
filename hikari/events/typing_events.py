@@ -1,4 +1,3 @@
-# cython: language_level=3
 # Copyright (c) 2020 Nekokatt
 # Copyright (c) 2021-present davfsa
 #
@@ -23,7 +22,7 @@
 
 from __future__ import annotations
 
-__all__: typing.Sequence[str] = ("TypingEvent", "GuildTypingEvent", "DMTypingEvent")
+__all__: typing.Sequence[str] = ("DMTypingEvent", "GuildTypingEvent", "TypingEvent")
 
 import abc
 import typing
@@ -33,7 +32,6 @@ import attrs
 from hikari import channels
 from hikari import intents
 from hikari import traits
-from hikari.api import special_endpoints
 from hikari.events import base_events
 from hikari.events import shard_events
 from hikari.internal import attrs_extensions
@@ -45,6 +43,7 @@ if typing.TYPE_CHECKING:
     from hikari import snowflakes
     from hikari import users
     from hikari.api import shard as gateway_shard
+    from hikari.api import special_endpoints
 
 
 @base_events.requires_intents(intents.Intents.GUILD_MESSAGE_TYPING, intents.Intents.DM_MESSAGE_TYPING)
@@ -167,9 +166,9 @@ class GuildTypingEvent(TypingEvent):
             The channel.
         """
         channel = await super().fetch_channel()
-        assert isinstance(
-            channel, channels.TextableGuildChannel
-        ), f"expected TextableGuildChannel from API, got {channel}"
+        assert isinstance(channel, channels.TextableGuildChannel), (
+            f"expected TextableGuildChannel from API, got {channel}"
+        )
         return channel
 
     async def fetch_guild(self) -> guilds.Guild:
@@ -214,9 +213,9 @@ class GuildTypingEvent(TypingEvent):
             return None
 
         channel = self.app.cache.get_guild_channel(self.channel_id)
-        assert channel is None or isinstance(
-            channel, channels.TextableGuildChannel
-        ), f"expected TextableGuildChannel from cache, got {channel}"
+        assert channel is None or isinstance(channel, channels.TextableGuildChannel), (
+            f"expected TextableGuildChannel from cache, got {channel}"
+        )
         return channel
 
     def get_guild(self) -> typing.Optional[guilds.GatewayGuild]:

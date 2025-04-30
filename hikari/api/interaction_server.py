@@ -1,4 +1,3 @@
-# cython: language_level=3
 # Copyright (c) 2020 Nekokatt
 # Copyright (c) 2021-present davfsa
 #
@@ -23,7 +22,7 @@
 
 from __future__ import annotations
 
-__all__: typing.Sequence[str] = ("ListenerT", "Response", "InteractionServer")
+__all__: typing.Sequence[str] = ("InteractionServer", "ListenerT", "Response")
 
 import abc
 import typing
@@ -132,38 +131,6 @@ class InteractionServer(abc.ABC):
             Instructions on how the REST server calling this should respond to
             the interaction request.
         """
-
-    @typing.overload
-    @abc.abstractmethod
-    def get_listener(
-        self, interaction_type: type[command_interactions.CommandInteraction], /
-    ) -> typing.Optional[ListenerT[command_interactions.CommandInteraction, _ModalOrMessageResponseBuilder]]: ...
-
-    @typing.overload
-    @abc.abstractmethod
-    def get_listener(
-        self, interaction_type: type[component_interactions.ComponentInteraction], /
-    ) -> typing.Optional[ListenerT[component_interactions.ComponentInteraction, _ModalOrMessageResponseBuilder]]: ...
-
-    @typing.overload
-    @abc.abstractmethod
-    def get_listener(
-        self, interaction_type: type[command_interactions.AutocompleteInteraction], /
-    ) -> typing.Optional[
-        ListenerT[command_interactions.AutocompleteInteraction, special_endpoints.InteractionAutocompleteBuilder]
-    ]: ...
-
-    @typing.overload
-    @abc.abstractmethod
-    def get_listener(
-        self, interaction_type: type[modal_interactions.ModalInteraction], /
-    ) -> typing.Optional[ListenerT[modal_interactions.ModalInteraction, _MessageResponseBuilderT]]: ...
-
-    @typing.overload
-    @abc.abstractmethod
-    def get_listener(
-        self, interaction_type: type[_InteractionT_co], /
-    ) -> typing.Optional[ListenerT[_InteractionT_co, special_endpoints.InteractionResponseBuilder]]: ...
 
     @abc.abstractmethod
     def get_listener(

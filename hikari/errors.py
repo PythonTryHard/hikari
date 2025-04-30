@@ -1,4 +1,3 @@
-# cython: language_level=3
 # Copyright (c) 2020 Nekokatt
 # Copyright (c) 2021-present davfsa
 #
@@ -24,28 +23,28 @@
 from __future__ import annotations
 
 __all__: typing.Sequence[str] = (
-    "HikariError",
-    "HikariWarning",
-    "HikariInterrupt",
-    "ComponentStateConflictError",
-    "UnrecognisedEntityError",
-    "NotFoundError",
-    "RateLimitTooLongError",
-    "UnauthorizedError",
-    "ForbiddenError",
     "BadRequestError",
+    "BulkDeleteError",
+    "ClientHTTPResponseError",
+    "ComponentStateConflictError",
+    "ForbiddenError",
+    "GatewayConnectionError",
+    "GatewayError",
+    "GatewayServerClosedConnectionError",
+    "GatewayTransportError",
     "HTTPError",
     "HTTPResponseError",
-    "ClientHTTPResponseError",
+    "HikariError",
+    "HikariInterrupt",
+    "HikariWarning",
     "InternalServerError",
-    "ShardCloseCode",
-    "GatewayConnectionError",
-    "GatewayTransportError",
-    "GatewayServerClosedConnectionError",
-    "GatewayError",
-    "MissingIntentWarning",
     "MissingIntentError",
-    "BulkDeleteError",
+    "MissingIntentWarning",
+    "NotFoundError",
+    "RateLimitTooLongError",
+    "ShardCloseCode",
+    "UnauthorizedError",
+    "UnrecognisedEntityError",
     "VoiceError",
 )
 
@@ -93,7 +92,7 @@ class HikariWarning(RuntimeWarning):
 
 
 @attrs.define(auto_exc=True, repr=False, slots=False)
-class HikariInterrupt(KeyboardInterrupt, HikariError):
+class HikariInterrupt(KeyboardInterrupt):
     """Exception raised when a kill signal is handled internally."""
 
     signum: int = attrs.field()
@@ -254,10 +253,7 @@ class HTTPResponseError(HTTPError):
         else:
             name_value = f"Unknown Status {self.status}"
 
-        if self.code:
-            code_str = f" ({self.code})"
-        else:
-            code_str = ""
+        code_str = f" ({self.code})" if self.code else ""
 
         if self.message:
             body = self.message
@@ -369,7 +365,7 @@ class RateLimitTooLongError(HTTPError):
     """Internal error raised if the wait for a rate limit is too long.
 
     This is similar to [`asyncio.TimeoutError`][] in the way that it is used,
-    but this will be raised pre-emptively and immediately if the period
+    but this will be raised preemptively and immediately if the period
     of time needed to wait is greater than a user-defined limit.
 
     This will almost always be route-specific. If you receive this, it is

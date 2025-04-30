@@ -1,4 +1,3 @@
-# cython: language_level=3
 # Copyright (c) 2020 Nekokatt
 # Copyright (c) 2021-present davfsa
 #
@@ -25,7 +24,6 @@ from __future__ import annotations
 
 __all__: typing.Sequence[str] = ("EventFactoryImpl",)
 
-import datetime
 import types
 import typing
 
@@ -54,11 +52,14 @@ from hikari.events import stage_events
 from hikari.events import typing_events
 from hikari.events import user_events
 from hikari.events import voice_events
+from hikari.interactions import base_interactions
 from hikari.internal import collections
 from hikari.internal import data_binding
 from hikari.internal import time
 
 if typing.TYPE_CHECKING:
+    import datetime
+
     from hikari import guilds as guild_models
     from hikari import invites as invite_models
     from hikari import messages as messages_models
@@ -67,6 +68,13 @@ if typing.TYPE_CHECKING:
     from hikari import traits
     from hikari import voices as voices_models
     from hikari.api import shard as gateway_shard
+
+_INTERACTION_EVENTS_MAP: dict[base_interactions.InteractionType, type[interaction_events.InteractionCreateEvent]] = {
+    base_interactions.InteractionType.APPLICATION_COMMAND: interaction_events.CommandInteractionCreateEvent,
+    base_interactions.InteractionType.AUTOCOMPLETE: interaction_events.AutocompleteInteractionCreateEvent,
+    base_interactions.InteractionType.MESSAGE_COMPONENT: interaction_events.ComponentInteractionCreateEvent,
+    base_interactions.InteractionType.MODAL_SUBMIT: interaction_events.ModalInteractionCreateEvent,
+}
 
 
 class EventFactoryImpl(event_factory.EventFactory):
@@ -97,9 +105,9 @@ class EventFactoryImpl(event_factory.EventFactory):
         self, shard: gateway_shard.GatewayShard, payload: data_binding.JSONObject
     ) -> channel_events.GuildChannelCreateEvent:
         channel = self._app.entity_factory.deserialize_channel(payload)
-        assert isinstance(
-            channel, channel_models.PermissibleGuildChannel
-        ), "CHANNEL_CREATE events for threads and DMS are undocumented behaviour"
+        assert isinstance(channel, channel_models.PermissibleGuildChannel), (
+            "CHANNEL_CREATE events for threads and DMS are undocumented behaviour"
+        )
         return channel_events.GuildChannelCreateEvent(shard=shard, channel=channel)
 
     def deserialize_guild_channel_update_event(
@@ -110,18 +118,18 @@ class EventFactoryImpl(event_factory.EventFactory):
         old_channel: typing.Optional[channel_models.PermissibleGuildChannel] = None,
     ) -> channel_events.GuildChannelUpdateEvent:
         channel = self._app.entity_factory.deserialize_channel(payload)
-        assert isinstance(
-            channel, channel_models.PermissibleGuildChannel
-        ), "CHANNEL_UPDATE events for threads and DMS are undocumented behaviour"
+        assert isinstance(channel, channel_models.PermissibleGuildChannel), (
+            "CHANNEL_UPDATE events for threads and DMS are undocumented behaviour"
+        )
         return channel_events.GuildChannelUpdateEvent(shard=shard, channel=channel, old_channel=old_channel)
 
     def deserialize_guild_channel_delete_event(
         self, shard: gateway_shard.GatewayShard, payload: data_binding.JSONObject
     ) -> channel_events.GuildChannelDeleteEvent:
         channel = self._app.entity_factory.deserialize_channel(payload)
-        assert isinstance(
-            channel, channel_models.PermissibleGuildChannel
-        ), "CHANNEL_DELETE events for threads and DMS are undocumented behaviour"
+        assert isinstance(channel, channel_models.PermissibleGuildChannel), (
+            "CHANNEL_DELETE events for threads and DMS are undocumented behaviour"
+        )
         return channel_events.GuildChannelDeleteEvent(shard=shard, channel=channel)
 
     def deserialize_channel_pins_update_event(
@@ -494,9 +502,9 @@ class EventFactoryImpl(event_factory.EventFactory):
     def deserialize_interaction_create_event(
         self, shard: gateway_shard.GatewayShard, payload: data_binding.JSONObject
     ) -> interaction_events.InteractionCreateEvent:
-        return interaction_events.InteractionCreateEvent(
-            shard=shard, interaction=self._app.entity_factory.deserialize_interaction(payload)
-        )
+        interaction = self._app.entity_factory.deserialize_interaction(payload)
+
+        return _INTERACTION_EVENTS_MAP[interaction.type](shard=shard, interaction=interaction)
 
     #################
     # MEMBER EVENTS #
@@ -994,9 +1002,7 @@ class EventFactoryImpl(event_factory.EventFactory):
             user_id=snowflakes.Snowflake(payload["user_id"]),
             channel_id=snowflakes.Snowflake(payload["channel_id"]),
             message_id=snowflakes.Snowflake(payload["message_id"]),
-            guild_id=(
-                snowflakes.Snowflake(payload["guild_id"]) if payload.get("guild_id", None) else undefined.UNDEFINED
-            ),
+            guild_id=snowflakes.Snowflake(payload["guild_id"]) if "guild_id" in payload else None,
             answer_id=payload["answer_id"],
         )
 
@@ -1009,8 +1015,6 @@ class EventFactoryImpl(event_factory.EventFactory):
             user_id=snowflakes.Snowflake(payload["user_id"]),
             channel_id=snowflakes.Snowflake(payload["channel_id"]),
             message_id=snowflakes.Snowflake(payload["message_id"]),
-            guild_id=(
-                snowflakes.Snowflake(payload["guild_id"]) if payload.get("guild_id", None) else undefined.UNDEFINED
-            ),
+            guild_id=snowflakes.Snowflake(payload["guild_id"]) if "guild_id" in payload else None,
             answer_id=payload["answer_id"],
         )
